@@ -6,10 +6,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# System dependencies (build tools for some Python packages)
+# System dependencies (git needed for installing CAMEL from GitHub)
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends build-essential && \
+    apt-get install -y --no-install-recommends \
+      build-essential \
+      git && \
     rm -rf /var/lib/apt/lists/*
+
+# Use a virtual environment to avoid installing into system Python as root
+ENV VIRTUAL_ENV=/opt/venv
+RUN python -m venv "$VIRTUAL_ENV"
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 # Copy backend source code into the image
 COPY . .
@@ -20,7 +27,6 @@ COPY . .
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
       pip>=23.0 \
-      "camel-ai[eigent] @ git+https://github.com/szhengac/camel.git@gemini" \
       "fastapi>=0.115.12" \
       "fastapi-babel>=1.0.0" \
       "uvicorn[standard]>=0.34.2" \
@@ -38,6 +44,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
       "opentelemetry-sdk>=1.34.1" \
       "opentelemetry-exporter-otlp-proto-http>=1.34.1" \
       "google-genai==1.60.0"
+
+# Install CAMEL separately (GitHub dependency requires git in image)
+RUN pip install --no-cache-dir \
+      "camel-ai[eigent] @ git+https://github.com/szhengac/camel.git@gemini"
 
 # Expose the FastAPI port
 EXPOSE 5001
