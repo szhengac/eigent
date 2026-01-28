@@ -45,7 +45,7 @@ RUN pip install --no-cache-dir \
       "camel-ai[eigent] @ git+https://github.com/szhengac/camel.git@gemini"
 
 # Expose the FastAPI port
-EXPOSE 5001
+EXPOSE 5002
 
 # Run the backend using uvicorn, matching backend/README.md
 CMD ["uvicorn", "main:api", "--host", "0.0.0.0", "--port", "5002"]
