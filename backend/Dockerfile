@@ -6,11 +6,29 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# System dependencies (git needed for installing CAMEL from GitHub)
+# -----------------------------
+# System dependencies
+# -----------------------------
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       build-essential \
-      git && \
+      git \
+      chromium \
+      chromium-driver \
+      fonts-liberation \
+      libasound2 \
+      libatk-bridge2.0-0 \
+      libatk1.0-0 \
+      libcups2 \
+      libdrm2 \
+      libgbm1 \
+      libgtk-3-0 \
+      libnss3 \
+      libxcomposite1 \
+      libxdamage1 \
+      libxrandr2 \
+      xdg-utils \
+      ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy backend source code into the image
@@ -47,6 +65,15 @@ RUN pip install --no-cache-dir \
 # Expose the FastAPI port
 EXPOSE 5002
 
-# Run the backend using uvicorn, matching backend/README.md
-CMD ["uvicorn", "main:api", "--host", "0.0.0.0", "--port", "5002"]
+# -----------------------------
+# Entrypoint: start Chromium + FastAPI
+# -----------------------------
+CMD chromium \
+    --headless=new \
+    --disable-gpu \
+    --no-sandbox \
+    --disable-dev-shm-usage \
+    --remote-debugging-address=127.0.0.1 \
+    --remote-debugging-port=9222 & \
+  uvicorn main:api --host 0.0.0.0 --port 5002
 
