@@ -25,6 +25,7 @@ from camel.societies.workforce.events import (LogEvent, TaskAssignedEvent,
                                               TaskCreatedEvent,
                                               TaskFailedEvent,
                                               TaskStartedEvent,
+                                              TaskUpdatedEvent,
                                               WorkerCreatedEvent)
 from camel.societies.workforce.workforce_metrics import WorkforceMetrics
 from opentelemetry import trace
@@ -57,7 +58,10 @@ ATTR_TASK_ID = "eigent.task.id"
 ATTR_TASK_DESCRIPTION = "eigent.task.description"
 ATTR_TASK_PARENT_ID = "eigent.task.parent_id"
 ATTR_TASK_TYPE = "eigent.task.type"
+ATTR_TASK_UPDATE_TYPE = "eigent.task.update_type"
 ATTR_TASK_STATUS = "eigent.task.status"
+ATTR_TASK_OLD_VALUE = "eigent.task.old_value"
+ATTR_TASK_NEW_VALUE = "eigent.task.new_value"
 ATTR_TASK_QUEUE_TIME_SECONDS = "eigent.task.queue_time_seconds"
 ATTR_TASK_PROCESSING_TIME_SECONDS = "eigent.task.processing_time_seconds"
 ATTR_TASK_QUALITY_SCORE = "eigent.task.quality_score"
@@ -87,6 +91,7 @@ SPAN_WORKFORCE_EXECUTION = "workforce.execution"
 SPAN_WORKER_CREATED = "worker.created"
 SPAN_TASK_CREATED = "task.created"
 SPAN_TASK_ASSIGNED = "task.assigned"
+SPAN_TASK_UPDATED = "task.updated"
 SPAN_TASK_EXECUTION = "task.execution"
 SPAN_LOG_MESSAGE = "log.message"
 SPAN_ALL_TASKS_COMPLETED = "workforce.all_tasks_completed"
@@ -367,6 +372,30 @@ class WorkforceMetricsCallback(WorkforceMetrics):
 
         # Store span to end it later
         self.task_spans[event.task_id] = span
+
+    def log_task_updated(self, event: TaskUpdatedEvent) -> None:
+        """
+        Log a TaskUpdatedEvent as an OpenTelemetry span
+        """
+        if not self.enabled:
+            return
+
+        ctx = trace.set_span_in_context(self.root_span)
+        with self.tracer.start_as_current_span(SPAN_TASK_UPDATED, context=ctx) as span:
+            span.set_attribute(ATTR_TASK_ID, event.task_id)
+            span.set_attribute(ATTR_TASK_UPDATE_TYPE, event.update_type)
+
+            if event.worker_id:
+                span.set_attribute(ATTR_WORKER_ID, event.worker_id)
+            if event.parent_task_id:
+                span.set_attribute(ATTR_TASK_PARENT_ID, event.parent_task_id)
+            if event.old_value:
+                span.set_attribute(ATTR_TASK_OLD_VALUE, event.old_value)
+            if event.new_value:
+                span.set_attribute(ATTR_TASK_NEW_VALUE, event.new_value)
+            if event.metadata:
+                for key, value in event.metadata.items():
+                    span.set_attribute(f"eigent.task.metadata.{key}", value)
 
     def log_task_completed(self, event: TaskCompletedEvent) -> None:
         """Log task completion and end the execution span.
