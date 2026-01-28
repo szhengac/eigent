@@ -13,11 +13,6 @@ RUN apt-get update && \
       git && \
     rm -rf /var/lib/apt/lists/*
 
-# Use a virtual environment to avoid installing into system Python as root
-ENV VIRTUAL_ENV=/opt/venv
-RUN python -m venv "$VIRTUAL_ENV"
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-
 # Copy backend source code into the image
 COPY . .
 
@@ -53,5 +48,5 @@ RUN pip install --no-cache-dir \
 EXPOSE 5001
 
 # Run the backend using uvicorn, matching backend/README.md
-CMD ["uvicorn", "main:api", "--host", "0.0.0.0", "--port", "5001"]
+CMD ["uvicorn", "main:api", "--host", "0.0.0.0", "--port", "5002"]
 
