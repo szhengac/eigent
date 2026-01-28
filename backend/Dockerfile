@@ -1,8 +1,20 @@
 FROM python:3.10-slim
 
-# Prevent Python from writing .pyc files and buffer logs
+# -----------------------------
+# Environment
+# -----------------------------
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    BROWSER_DEBUG_HOST=127.0.0.1 \
+    BROWSER_DEBUG_PORT=9222 \
+    CHROME_NO_SANDBOX=1 \
+    CHROME_HEADLESS=1 \
+    CHROME_DISABLE_GPU=1 \
+    CHROME_DISABLE_SOFTWARE_RASTERIZER=1 \
+    CHROME_DISABLE_EXTENSIONS=1 \
+    CHROME_DISABLE_NOTIFICATIONS=1 \
+    CHROME_DISABLE_COMPONENTS=GCM,MediaRouter \
+    DBUS_SESSION_BUS_ADDRESS=/run/dbus/system_bus_socket
 
 WORKDIR /app
 
@@ -15,6 +27,7 @@ RUN apt-get update && \
       git \
       chromium \
       chromium-driver \
+      dbus \
       fonts-liberation \
       libasound2 \
       libatk-bridge2.0-0 \
@@ -31,12 +44,14 @@ RUN apt-get update && \
       ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-# Copy backend source code into the image
+# -----------------------------
+# Copy backend code
+# -----------------------------
 COPY . .
 
-# Install Python dependencies (mirrors backend/pyproject.toml)
-# Use CAMEL from szhengac/camel gemini branch:
-# https://github.com/szhengac/camel/tree/gemini
+# -----------------------------
+# Install Python dependencies
+# -----------------------------
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
       pip>=23.0 \
@@ -58,22 +73,30 @@ RUN pip install --no-cache-dir --upgrade pip && \
       "opentelemetry-exporter-otlp-proto-http>=1.34.1" \
       "google-genai==1.60.0"
 
-# Install CAMEL separately (GitHub dependency requires git in image)
 RUN pip install --no-cache-dir \
       "camel-ai[eigent] @ git+https://github.com/szhengac/camel.git@gemini"
 
-# Expose the FastAPI port
+# -----------------------------
+# Expose API port
+# -----------------------------
 EXPOSE 5002
 
 # -----------------------------
-# Entrypoint: start Chromium + FastAPI
+# Entrypoint: DBus + Chromium + FastAPI
 # -----------------------------
-CMD chromium \
-    --headless=new \
-    --disable-gpu \
-    --no-sandbox \
-    --disable-dev-shm-usage \
-    --remote-debugging-address=127.0.0.1 \
-    --remote-debugging-port=9222 & \
-  uvicorn main:api --host 0.0.0.0 --port 5002
-
+CMD ["/bin/bash", "-c", "\
+    dbus-daemon --system --fork && \
+    chromium \
+        --headless=new \
+        --disable-gpu \
+        --no-sandbox \
+        --disable-dev-shm-usage \
+        --disable-software-rasterizer \
+        --disable-extensions \
+        --disable-notifications \
+        --disable-component-update \
+        --remote-debugging-address=127.0.0.1 \
+        --remote-debugging-port=9222 \
+        >/dev/null 2>&1 & \
+    uvicorn main:api --host 0.0.0.0 --port 5002 \
+"]
