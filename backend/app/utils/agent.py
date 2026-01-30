@@ -1418,7 +1418,15 @@ def multi_modal_agent(options: Chat):
     )
     video_download_toolkit = VideoDownloaderToolkit(options.project_id, working_directory=working_directory)
     video_download_toolkit = message_integration.register_toolkits(video_download_toolkit)
-    image_analysis_toolkit = ImageAnalysisToolkit(options.project_id)
+    image_analysis_toolkit = ImageAnalysisToolkit(
+        options.project_id,
+        model=ModelFactory.create(
+            model_platform=options.model_platform,
+            model_type=options.model_type,
+            api_key=options.api_key,
+            url=options.api_url,
+        ),
+    )
     image_analysis_toolkit = message_integration.register_toolkits(image_analysis_toolkit)
 
     terminal_toolkit = TerminalToolkit(
