@@ -39,11 +39,11 @@ class GoogleCalendarToolkit(BaseGoogleCalendarToolkit, AbstractToolkit):
 
     @classmethod
     def get_can_use_tools(cls, api_task_id: str):
-        # Credentials only from Chat.extra_params or per-project OAuth state (no env).
+        # Credentials only from Chat.creds_params or per-project OAuth state (no env).
         task_lock = get_task_lock_if_exists(api_task_id)
         if task_lock:
-            extra = getattr(task_lock, "extra_params", None) or {}
-            gc = extra.get("google_calendar") or {}
+            creds = getattr(task_lock, "creds_params", None) or {}
+            gc = creds.get("google_calendar") or {}
             if gc.get("access_token") or (gc.get("refresh_token") and gc.get("client_id") and gc.get("client_secret")):
                 return cls(api_task_id).get_tools()
             state = oauth_state_manager.get_state("google_calendar", api_task_id)
@@ -68,16 +68,16 @@ class GoogleCalendarToolkit(BaseGoogleCalendarToolkit, AbstractToolkit):
 
         creds = None
 
-        # First, try credentials from Chat.extra_params (stored on task_lock when request is received)
+        # First, try credentials from Chat.creds_params (stored on task_lock when request is received)
         task_lock = get_task_lock_if_exists(self.api_task_id)
         if task_lock:
-            extra = getattr(task_lock, "extra_params", None) or {}
-            gc = extra.get("google_calendar") or {}
+            creds_params = getattr(task_lock, "creds_params", None) or {}
+            gc = creds_params.get("google_calendar") or {}
             if gc:
                 token_uri = gc.get("token_uri") or "https://oauth2.googleapis.com/token"
                 if gc.get("access_token"):
                     creds = Credentials(token=gc["access_token"], scopes=SCOPES)
-                    logger.info("Using Google Calendar credentials from Chat.extra_params (access_token)")
+                    logger.info("Using Google Calendar credentials from Chat.creds_params (access_token)")
                 elif gc.get("refresh_token") and gc.get("client_id") and gc.get("client_secret"):
                     creds = Credentials(
                         token=None,
@@ -87,7 +87,7 @@ class GoogleCalendarToolkit(BaseGoogleCalendarToolkit, AbstractToolkit):
                         client_secret=gc["client_secret"],
                         scopes=SCOPES,
                     )
-                    logger.info("Using Google Calendar credentials from Chat.extra_params (refresh_token)")
+                    logger.info("Using Google Calendar credentials from Chat.creds_params (refresh_token)")
 
         # If still no creds, check per-project OAuth state (no env)
         if not creds:
@@ -97,7 +97,7 @@ class GoogleCalendarToolkit(BaseGoogleCalendarToolkit, AbstractToolkit):
                 creds = state.result
             else:
                 raise ValueError(
-                    "No Google Calendar credentials. Include them in Chat.extra_params['google_calendar'] "
+                    "No Google Calendar credentials. Include them in Chat.creds_params['google_calendar'] "
                     "(e.g. access_token or refresh_token+client_id+client_secret) or complete OAuth for this project."
                 )
 
@@ -143,11 +143,11 @@ class GoogleCalendarToolkit(BaseGoogleCalendarToolkit, AbstractToolkit):
                 state.status = "authorizing"
                 oauth_state_manager.update_status("google_calendar", "authorizing", project_id=project_id)
 
-                # Client credentials must come from Chat.extra_params for this project (no env).
+                # Client credentials must come from Chat.creds_params for this project (no env).
                 # For install flow (project_id='install'), client must have set them in a prior request or we fail.
                 task_lock = get_task_lock_if_exists(project_id)
-                extra = getattr(task_lock, "extra_params", None) or {} if task_lock else {}
-                gc = extra.get("google_calendar") or {}
+                creds_params = getattr(task_lock, "creds_params", None) or {} if task_lock else {}
+                gc = creds_params.get("google_calendar") or {}
                 client_id = gc.get("client_id")
                 client_secret = gc.get("client_secret")
                 token_uri = gc.get("token_uri") or "https://oauth2.googleapis.com/token"
@@ -156,7 +156,7 @@ class GoogleCalendarToolkit(BaseGoogleCalendarToolkit, AbstractToolkit):
 
                 if not client_id or not client_secret:
                     error_msg = (
-                        "Google Calendar OAuth requires client_id and client_secret in Chat.extra_params['google_calendar'] "
+                        "Google Calendar OAuth requires client_id and client_secret in Chat.creds_params['google_calendar'] "
                         "for this project (or for project_id='install' when using the install flow)."
                     )
                     logger.error(error_msg)

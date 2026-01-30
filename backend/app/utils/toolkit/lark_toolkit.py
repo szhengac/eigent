@@ -29,12 +29,12 @@ class LarkToolkit(BaseLarkToolkit, AbstractToolkit):
 
     @classmethod
     def get_can_use_tools(cls, api_task_id: str) -> list[FunctionTool]:
-        # Credentials from Chat.extra_params["lark"] (unified: app_id, app_secret).
+        # Credentials from Chat.creds_params["lark"] (unified: app_id, app_secret).
         from app.utils.extra_params_config import get_unified
         task_lock = get_task_lock_if_exists(api_task_id)
         if not task_lock:
             return []
-        lark = (getattr(task_lock, "extra_params", None) or {}).get("lark") or {}
+        lark = (getattr(task_lock, "creds_params", None) or {}).get("lark") or {}
         if get_unified(lark, "app_id", "LARK_APP_ID") and get_unified(lark, "app_secret", "LARK_APP_SECRET"):
             return LarkToolkit(api_task_id).get_tools()
         return []

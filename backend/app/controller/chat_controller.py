@@ -140,8 +140,8 @@ async def post(data: Chat, request: Request):
     task_lock.file_save_path = data.file_save_path()
     task_lock.camel_log_dir = camel_log
 
-    # Copy Chat.extra_params onto task_lock so toolkits (e.g. Google Calendar) can read request-scoped tokens
-    task_lock.extra_params = data.extra_params or {}
+    # Copy Chat.creds_params onto task_lock for toolkits
+    task_lock.creds_params = data.creds_params or {}
 
     # Set the initial current_task_id in task_lock
     set_current_task_id(data.project_id, data.task_id)

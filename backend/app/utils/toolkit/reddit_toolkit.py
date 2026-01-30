@@ -36,12 +36,12 @@ class RedditToolkit(BaseRedditToolkit, AbstractToolkit):
 
     @classmethod
     def get_can_use_tools(cls, api_task_id: str) -> list[FunctionTool]:
-        # Credentials from Chat.extra_params["reddit"] (unified: client_id, client_secret, user_agent).
+        # Credentials from Chat.creds_params["reddit"] (unified: client_id, client_secret, user_agent).
         from app.utils.extra_params_config import get_unified
         task_lock = get_task_lock_if_exists(api_task_id)
         if not task_lock:
             return []
-        reddit = (getattr(task_lock, "extra_params", None) or {}).get("reddit") or {}
+        reddit = (getattr(task_lock, "creds_params", None) or {}).get("reddit") or {}
         if (
             get_unified(reddit, "client_id", "REDDIT_CLIENT_ID")
             and get_unified(reddit, "client_secret", "REDDIT_CLIENT_SECRET")

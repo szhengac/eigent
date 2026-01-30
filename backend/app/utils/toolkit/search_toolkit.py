@@ -66,12 +66,12 @@ class SearchToolkit(BaseSearchToolkit, AbstractToolkit):
     #     return super().search_linkup(query, depth, output_type, structured_output_schema)
 
     def _get_search_params(self):
-        """Credentials from Chat.extra_params only (no env)."""
+        """Credentials from Chat.creds_params only (no env)."""
         task_lock = get_task_lock_if_exists(self.api_task_id)
         if not task_lock:
             return {}
-        extra = getattr(task_lock, "extra_params", None) or {}
-        return extra.get("search") or {}
+        creds = getattr(task_lock, "creds_params", None) or {}
+        return creds.get("search") or {}
 
     @listen_toolkit(
         BaseSearchToolkit.search_google,
@@ -84,7 +84,7 @@ class SearchToolkit(BaseSearchToolkit, AbstractToolkit):
         number_of_result_pages: int = 10,
         start_page: int = 1
     ) -> list[dict[str, Any]]:
-        # Credentials only from Chat.extra_params["search"] (no env).
+        # Credentials only from Chat.creds_params["search"] (no env).
         params = self._get_search_params()
         google_api_key = params.get("google_api_key") or params.get("GOOGLE_API_KEY")
         search_engine_id = params.get("search_engine_id") or params.get("SEARCH_ENGINE_ID")
@@ -100,7 +100,7 @@ class SearchToolkit(BaseSearchToolkit, AbstractToolkit):
             logger.info("Using cloud Google Search from extra_params")
             return self.cloud_search_google(query, search_type, number_of_result_pages, start_page)
         raise ValueError(
-            "No search credentials. Include Chat.extra_params['search'] with "
+            "No search credentials. Include Chat.creds_params['search'] with "
             "google_api_key + search_engine_id, or cloud_api_key (and optional server_url for proxy)."
         )
 
@@ -138,14 +138,14 @@ class SearchToolkit(BaseSearchToolkit, AbstractToolkit):
         number_of_result_pages: int = 10,
         start_page: int = 1
     ) -> list[dict[str, Any]]:
-        """Proxy search: credentials from extra_params; server_url from env (server config)."""
+        """Proxy search: credentials from creds_params; server_url from env (server config)."""
         params = self._get_search_params()
         cloud_api_key = params.get("cloud_api_key")
         if not cloud_api_key:
-            raise ValueError("Chat.extra_params['search']['cloud_api_key'] required for cloud search.")
+            raise ValueError("Chat.creds_params['search']['cloud_api_key'] required for cloud search.")
         server_url = params.get("server_url") or env("SERVER_URL")
         if not server_url:
-            raise ValueError("Chat.extra_params['search']['server_url'] or SERVER_URL env required for cloud search.")
+            raise ValueError("Chat.creds_params['search']['server_url'] or SERVER_URL env required for cloud search.")
         res = httpx.get(
             server_url.rstrip("/") + "/proxy/google",
             params={
@@ -360,12 +360,12 @@ class SearchToolkit(BaseSearchToolkit, AbstractToolkit):
 
     @classmethod
     def get_can_use_tools(cls, api_task_id: str) -> list[FunctionTool]:
-        # Credentials only from Chat.extra_params["search"] (no env).
+        # Credentials only from Chat.creds_params["search"] (no env).
         task_lock = get_task_lock_if_exists(api_task_id)
         if not task_lock:
             return []
-        extra = getattr(task_lock, "extra_params", None) or {}
-        params = extra.get("search") or {}
+        creds = getattr(task_lock, "creds_params", None) or {}
+        params = creds.get("search") or {}
         has_direct = (params.get("google_api_key") or params.get("GOOGLE_API_KEY")) and (
             params.get("search_engine_id") or params.get("SEARCH_ENGINE_ID")
         )

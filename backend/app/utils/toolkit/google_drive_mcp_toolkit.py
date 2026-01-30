@@ -51,13 +51,13 @@ class GoogleDriveMCPToolkit(BaseGoogleDriveMCPToolkit, AbstractToolkit):
 
     @classmethod
     async def get_can_use_tools(cls, api_task_id: str, input_env: dict[str, str] | None = None) -> list[FunctionTool]:
-        # Credentials from Chat.extra_params["google_drive"]: user sends "credentials" and "token" (both base64); we save to project path.
+        # Credentials from Chat.creds_params["google_drive"]: user sends "credentials" and "token" (both base64); we save to project path.
         from app.utils.extra_params_config import get_unified, write_content_to_project
 
         task_lock = get_task_lock_if_exists(api_task_id)
         if not task_lock:
             return []
-        gdrive = (getattr(task_lock, "extra_params", None) or {}).get("google_drive") or {}
+        gdrive = (getattr(task_lock, "creds_params", None) or {}).get("google_drive") or {}
         credentials_b64 = get_unified(gdrive, "credentials")
         tokens_b64 = get_unified(gdrive, "tokens")
         if not credentials_b64 or not tokens_b64:

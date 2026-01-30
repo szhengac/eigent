@@ -35,12 +35,12 @@ class GithubToolkit(BaseGithubToolkit, AbstractToolkit):
 
     @classmethod
     def get_can_use_tools(cls, api_task_id: str) -> list[FunctionTool]:
-        # Credentials from Chat.extra_params["github"] (unified: access_token).
+        # Credentials from Chat.creds_params["github"] (unified: access_token).
         from app.utils.extra_params_config import get_unified
         task_lock = get_task_lock_if_exists(api_task_id)
         if not task_lock:
             return []
-        github = (getattr(task_lock, "extra_params", None) or {}).get("github") or {}
+        github = (getattr(task_lock, "creds_params", None) or {}).get("github") or {}
         token = get_unified(github, "access_token", "GITHUB_ACCESS_TOKEN")
         if not token:
             return []

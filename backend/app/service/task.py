@@ -348,6 +348,8 @@ class TaskLock:
     """Current task ID to be used in SSE responses"""
     extra_params: dict | None = None
     """Extra parameters for the task"""
+    creds_params: dict | None = None
+    """Credentials and tokens for toolkits (from Chat.creds_params)"""
 
     def __init__(self, id: str, queue: asyncio.Queue, human_input: dict) -> None:
         self.id = id

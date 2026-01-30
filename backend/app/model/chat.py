@@ -79,10 +79,11 @@ class Chat(BaseModel):
         "Adopt a confident and professional tone."
     )
     new_agents: list["NewAgent"] = []
-    # Request-scoped credentials for toolkits. Use unified key names: access_token, client_id, client_secret, etc.
-    # Example: {"twitter": {"access_token": "...", "access_token_secret": "...", "consumer_key": "...", "consumer_secret": "..."}}
-    # For tools that need a file path (saved under Chat.file_save_path): send base64-encoded content under "credentials", "token", or "config".
-    # google_gmail: extra_params["google_gmail"]["credentials"]. google_drive: "credentials" and "token". notion_mcp: "config" (base64 of zipped folder).
+    # Request-scoped credentials and tokens for toolkits (separate from extra_params).
+    # Use unified key names: access_token, client_id, client_secret, etc.
+    # For file-based tools send base64 under "credentials", "token", or "config".
+    # Example: {"twitter": {"access_token": "...", ...}, "google_gmail": {"credentials": "<base64>"}}
+    creds_params: dict | None = None
     extra_params: dict | None = None
 
     @field_validator("model_platform")

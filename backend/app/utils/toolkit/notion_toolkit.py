@@ -35,12 +35,12 @@ class NotionToolkit(BaseNotionToolkit, AbstractToolkit):
 
     @classmethod
     def get_can_use_tools(cls, api_task_id: str) -> List[FunctionTool]:
-        # Credentials from Chat.extra_params["notion"] (unified: access_token).
+        # Credentials from Chat.creds_params["notion"] (unified: access_token).
         from app.utils.extra_params_config import get_unified
         task_lock = get_task_lock_if_exists(api_task_id)
         if not task_lock:
             return []
-        notion = (getattr(task_lock, "extra_params", None) or {}).get("notion") or {}
+        notion = (getattr(task_lock, "creds_params", None) or {}).get("notion") or {}
         token = get_unified(notion, "access_token", "notion_token", "NOTION_TOKEN")
         if not token:
             return []

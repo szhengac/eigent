@@ -13,15 +13,13 @@
 # ========= Copyright 2025-2026 @ Eigent.ai All Rights Reserved. =========
 
 """
-Unified extra_params key names and mapping to env vars for toolkits.
+Unified creds_params key names and mapping to env vars for toolkits.
 
-Clients send credentials in Chat.extra_params with unified names, e.g.:
-  extra_params["twitter"] = {"access_token": "...", "access_token_secret": "...", "consumer_key": "...", "consumer_secret": "..."}
-  extra_params["linkedin"] = {"access_token": "..."}
+Credentials and tokens come from Chat.creds_params (not extra_params), e.g.:
+  creds_params["twitter"] = {"access_token": "...", "access_token_secret": "...", "consumer_key": "...", "consumer_secret": "..."}
+  creds_params["google_gmail"] = {"credentials": "<base64>"}
 
-For tools that need a credentials/token file path (e.g. google_gmail, google_drive), the user
-serializes the file content into base64 and sends "credentials" (and "token" for Drive); we decode and save to
-the project path (from Chat.file_save_path) and pass that path to the tool.
+extra_params_to_env(creds_params) builds env vars for base toolkits that read from os.environ.
 """
 
 from pathlib import Path
@@ -36,8 +34,8 @@ from app.service.task import get_task_lock_if_exists
 
 logger = logging.getLogger("main")
 
-# Map: tool key in extra_params -> { unified_key -> env_var_name }
-# Base toolkits read these env vars; we set them from extra_params at call time.
+# Map: tool key in creds_params -> { unified_key -> env_var_name }
+# Base toolkits read these env vars; we set them from creds_params at call time.
 UNIFIED_TO_ENV: dict[str, dict[str, str]] = {
     "twitter": {
         "access_token": "TWITTER_ACCESS_TOKEN",
@@ -66,25 +64,6 @@ UNIFIED_TO_ENV: dict[str, dict[str, str]] = {
         "app_secret": "LARK_APP_SECRET",
     },
 }
-
-
-def extra_params_to_env(extra_params: dict[str, Any] | None) -> dict[str, str]:
-    """
-    Convert extra_params (unified keys per tool) into a flat env var dict.
-    Used to inject into os.environ during tool execution so base toolkits see credentials.
-    """
-    if not extra_params:
-        return {}
-    result: dict[str, str] = {}
-    for tool_key, mapping in UNIFIED_TO_ENV.items():
-        params = extra_params.get(tool_key)
-        if not isinstance(params, dict):
-            continue
-        for unified_key, env_var in mapping.items():
-            val = params.get(unified_key)
-            if val is not None and str(val).strip():
-                result[env_var] = str(val)
-    return result
 
 
 def get_unified(params: dict[str, Any], *keys: str) -> str | None:

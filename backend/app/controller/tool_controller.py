@@ -31,8 +31,8 @@ router = APIRouter()
 
 
 class InstallToolBody(BaseModel):
-    """Optional body for install; extra_params (e.g. google_calendar client_id/client_secret) for OAuth."""
-    extra_params: dict | None = None
+    """Optional body for install; creds_params (e.g. google_calendar client_id/client_secret) for OAuth."""
+    creds_params: dict | None = None
 
 
 @router.post("/install/tool/{tool}", name="install tool")
@@ -91,9 +91,9 @@ async def install_tool(tool: str, body: InstallToolBody | None = Body(None)):
             )
     elif tool == "google_calendar":
         try:
-            # Install flow uses project_id='install'; set extra_params from request so OAuth can use client_id/client_secret
+            # Install flow uses project_id='install'; set creds_params from request so OAuth can use client_id/client_secret
             task_lock = get_or_create_task_lock("install")
-            task_lock.extra_params = (body.extra_params or {}) if body else {}
+            task_lock.creds_params = (body.creds_params or {}) if body else {}
 
             try:
                 toolkit = GoogleCalendarToolkit("install")
@@ -115,7 +115,7 @@ async def install_tool(tool: str, body: InstallToolBody | None = Body(None)):
                 return {
                     "success": False,
                     "status": "authorizing",
-                    "message": "Authorization required. Include extra_params['google_calendar'] with client_id and client_secret in the request body, then complete OAuth.",
+                    "message": "Authorization required. Include creds_params['google_calendar'] with client_id and client_secret in the request body, then complete OAuth.",
                     "toolkit_name": "GoogleCalendarToolkit",
                     "requires_auth": True
                 }

@@ -54,12 +54,12 @@ class GoogleGmailMCPToolkit(BaseToolkit, AbstractToolkit):
 
     @classmethod
     async def get_can_use_tools(cls, api_task_id: str, input_env: dict[str, str] | None = None) -> list[FunctionTool]:
-        # Credentials from Chat.extra_params["google_gmail"]: user sends "credentials" (base64 of credential/token file); we save to project path.
+        # Credentials from Chat.creds_params["google_gmail"]: user sends "credentials" (base64); we save to project path.
         from app.utils.extra_params_config import get_unified, write_content_to_project
         task_lock = get_task_lock_if_exists(api_task_id)
         if not task_lock:
             return []
-        gmail = (getattr(task_lock, "extra_params", None) or {}).get("google_gmail") or {}
+        gmail = (getattr(task_lock, "creds_params", None) or {}).get("google_gmail") or {}
         credentials_b64 = get_unified(gmail, "credentials")
         if not credentials_b64:
             return []

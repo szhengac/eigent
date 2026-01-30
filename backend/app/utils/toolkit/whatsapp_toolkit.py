@@ -30,12 +30,12 @@ class WhatsAppToolkit(BaseWhatsAppToolkit, AbstractToolkit):
 
     @classmethod
     def get_can_use_tools(cls, api_task_id: str) -> list[FunctionTool]:
-        # Credentials from Chat.extra_params["whatsapp"] (unified: access_token, phone_number_id).
+        # Credentials from Chat.creds_params["whatsapp"] (unified: access_token, phone_number_id).
         from app.utils.extra_params_config import get_unified
         task_lock = get_task_lock_if_exists(api_task_id)
         if not task_lock:
             return []
-        wa = (getattr(task_lock, "extra_params", None) or {}).get("whatsapp") or {}
+        wa = (getattr(task_lock, "creds_params", None) or {}).get("whatsapp") or {}
         if get_unified(wa, "access_token", "WHATSAPP_ACCESS_TOKEN") and get_unified(wa, "phone_number_id", "WHATSAPP_PHONE_NUMBER_ID"):
             return WhatsAppToolkit(api_task_id).get_tools()
         return []

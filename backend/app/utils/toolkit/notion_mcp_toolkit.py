@@ -57,7 +57,7 @@ class NotionMCPToolkit(MCPToolkit, AbstractToolkit):
         self.api_task_id = api_task_id
         if timeout is None:
             timeout = 120.0
-        # Credentials/config only from Chat.extra_params["notion_mcp"] or default path (no env).
+        # Credentials/config only from Chat.creds_params["notion_mcp"] or default path (no env).
         config_dir = mcp_remote_config_dir or os.path.expanduser("~/.mcp-auth")
         config_dict={
             "mcpServers": {
@@ -78,12 +78,12 @@ class NotionMCPToolkit(MCPToolkit, AbstractToolkit):
 
     @classmethod
     async def get_can_use_tools(cls, api_task_id: str) -> list[FunctionTool]:
-        # Config from Chat.extra_params["notion_mcp"]: user sends "config" (base64 of zipped entire folder); we unzip to project path and pass dir.
+        # Config from Chat.creds_params["notion_mcp"]: user sends "config" (base64 of zipped folder); we unzip to project path and pass dir.
         from app.utils.extra_params_config import get_unified, write_config_folder_to_project
         task_lock = get_task_lock_if_exists(api_task_id)
         if not task_lock:
             return []
-        notion_mcp = (getattr(task_lock, "extra_params", None) or {}).get("notion_mcp") or {}
+        notion_mcp = (getattr(task_lock, "creds_params", None) or {}).get("notion_mcp") or {}
         config_b64 = get_unified(notion_mcp, "config")
         if not config_b64:
             return []
