@@ -17,8 +17,10 @@ from typing import List, Dict, Optional
 from pydantic import BaseModel
 from app.exception.exception import ProgramException
 from app.model.chat import AgentModelConfig, McpServers, Status, SupplementChat, Chat, UpdateData
-from app.utils.extra_params_config import cleanup_project_credentials, cleanup_file_save_path
+
 import asyncio
+from pathlib import Path
+import shutil
 from enum import Enum
 from camel.tasks import Task
 from contextlib import contextmanager
@@ -279,6 +281,42 @@ class Agents(str, Enum):
     multi_modal_agent = "multi_modal_agent"
     social_medium_agent = "social_medium_agent"
     mcp_agent = "mcp_agent"
+
+
+def cleanup_project_credentials(api_task_id: str) -> None:
+    """Remove .eigent_credentials directory for the project. Call when chat/task ends."""
+    task_lock = get_task_lock_if_exists(api_task_id)
+    if not task_lock:
+        return
+    path = getattr(task_lock, "file_save_path", None)
+    if not path:
+        return
+    cred_dir = Path(path) / ".eigent_credentials"
+    if not cred_dir.is_dir():
+        return
+    try:
+        shutil.rmtree(cred_dir)
+        logger.debug("Cleaned up project credentials", extra={"project_id": api_task_id})
+    except OSError as e:
+        logger.warning("Failed to cleanup project credentials dir: %s", e)
+
+
+def cleanup_file_save_path(api_task_id: str) -> None:
+    """Remove the entire directory at task_lock.file_save_path (from Chat.file_save_path). Call when chat finishes."""
+    task_lock = get_task_lock_if_exists(api_task_id)
+    if not task_lock:
+        return
+    path = getattr(task_lock, "file_save_path", None)
+    if not path:
+        return
+    dir_path = Path(path)
+    if not dir_path.is_dir():
+        return
+    try:
+        shutil.rmtree(dir_path)
+        logger.debug("Cleaned up file_save_path", extra={"project_id": api_task_id, "path": path})
+    except OSError as e:
+        logger.warning("Failed to cleanup file_save_path %s: %s", path, e)
 
 
 class TaskLock:
