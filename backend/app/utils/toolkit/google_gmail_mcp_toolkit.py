@@ -13,9 +13,8 @@
 # ========= Copyright 2025-2026 @ Eigent.ai All Rights Reserved. =========
 
 from camel.toolkits import BaseToolkit, FunctionTool, MCPToolkit
-from app.component.environment import env, env_or_fail
 from app.component.command import bun
-from app.service.task import Agents
+from app.service.task import Agents, get_task_lock_if_exists
 from app.utils.toolkit.abstract_toolkit import AbstractToolkit
 
 
@@ -31,14 +30,13 @@ class GoogleGmailMCPToolkit(BaseToolkit, AbstractToolkit):
     ):
         super().__init__(timeout)
         self.api_task_id = api_task_id
-        credentials_path = credentials_path or env("GMAIL_CREDENTIALS_PATH")
         self._mcp_toolkit = MCPToolkit(
             config_dict={
                 "mcpServers": {
                     "gmail": {
                         "command": bun(),
                         "args": ["x", "-y", "@gongrzhe/server-gmail-autoauth-mcp"],
-                        "env": {"GMAIL_CREDENTIALS_PATH": credentials_path, **(input_env or {})},
+                        "env": {"GMAIL_CREDENTIALS_PATH": credentials_path or "", **(input_env or {})},
                     }
                 }
             },
@@ -56,9 +54,19 @@ class GoogleGmailMCPToolkit(BaseToolkit, AbstractToolkit):
 
     @classmethod
     async def get_can_use_tools(cls, api_task_id: str, input_env: dict[str, str] | None = None) -> list[FunctionTool]:
-        if env("GMAIL_CREDENTIALS_PATH") is None:
+        # Credentials from Chat.extra_params["google_gmail"]: user sends "credentials" (base64 of credential/token file); we save to project path.
+        from app.utils.extra_params_config import get_unified, write_content_to_project
+        task_lock = get_task_lock_if_exists(api_task_id)
+        if not task_lock:
             return []
-        toolkit = cls(api_task_id, env_or_fail("GMAIL_CREDENTIALS_PATH"), 180, input_env)
+        gmail = (getattr(task_lock, "extra_params", None) or {}).get("google_gmail") or {}
+        credentials_b64 = get_unified(gmail, "credentials")
+        if not credentials_b64:
+            return []
+        credentials_path = write_content_to_project(
+            api_task_id, "google_gmail", credentials_b64, filename_suffix="credentials.json"
+        )
+        toolkit = cls(api_task_id, credentials_path=credentials_path, timeout=180, input_env=input_env)
         await toolkit.connect()
         tools = []
         for item in toolkit.get_tools():

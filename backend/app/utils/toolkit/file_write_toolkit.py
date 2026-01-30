@@ -36,7 +36,7 @@ class FileToolkit(BaseFileToolkit, AbstractToolkit):
         backup_enabled: bool = True,
     ) -> None:
         if working_directory is None:
-            working_directory = env("file_save_path", os.path.expanduser("~/Downloads"))
+            working_directory = env("EIGENT_DATA_DIR", os.path.expanduser("~/.eigent/server_data"))
         super().__init__(working_directory, timeout, default_encoding, backup_enabled)
         self.api_task_id = api_task_id
 

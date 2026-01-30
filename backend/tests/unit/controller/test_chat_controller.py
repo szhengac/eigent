@@ -35,9 +35,8 @@ class TestChatController:
         """Test successful chat initialization."""
         chat_data = Chat(**sample_chat_data)
         
-        with patch("app.controller.chat_controller.create_task_lock", return_value=mock_task_lock), \
+        with patch("app.controller.chat_controller.get_or_create_task_lock", return_value=mock_task_lock), \
              patch("app.controller.chat_controller.step_solve") as mock_step_solve, \
-             patch("app.controller.chat_controller.load_dotenv"), \
              patch("pathlib.Path.mkdir"), \
              patch("pathlib.Path.home", return_value=MagicMock()):
             
@@ -55,16 +54,14 @@ class TestChatController:
             mock_step_solve.assert_called_once_with(chat_data, mock_request, mock_task_lock)
 
     @pytest.mark.asyncio
-    async def test_post_chat_sets_environment_variables(self, sample_chat_data, mock_request, mock_task_lock):
-        """Test that environment variables are properly set."""
+    async def test_post_chat_sets_task_lock_paths(self, sample_chat_data, mock_request, mock_task_lock):
+        """Test that server-derived paths are stored on task_lock (no env mutation)."""
         chat_data = Chat(**sample_chat_data)
         
-        with patch("app.controller.chat_controller.create_task_lock", return_value=mock_task_lock), \
+        with patch("app.controller.chat_controller.get_or_create_task_lock", return_value=mock_task_lock), \
              patch("app.controller.chat_controller.step_solve") as mock_step_solve, \
-             patch("app.controller.chat_controller.load_dotenv"), \
              patch("pathlib.Path.mkdir"), \
-             patch("pathlib.Path.home", return_value=MagicMock()), \
-             patch.dict(os.environ, {}, clear=True):
+             patch("pathlib.Path.home", return_value=MagicMock()):
             
             async def mock_generator():
                 yield "data: test_response\n\n"
@@ -73,11 +70,8 @@ class TestChatController:
             
             await post(chat_data, mock_request)
             
-            # Check environment variables were set
-            assert os.environ.get("OPENAI_API_KEY") == "test_key"
-            assert os.environ.get("OPENAI_API_BASE_URL") == "https://api.openai.com/v1"
-            assert os.environ.get("CAMEL_MODEL_LOG_ENABLED") == "true"
-            assert os.environ.get("browser_port") == "8080"
+            assert hasattr(mock_task_lock, "file_save_path")
+            assert hasattr(mock_task_lock, "camel_log_dir")
 
     def test_improve_chat_success(self, mock_task_lock):
         """Test successful chat improvement."""
@@ -179,9 +173,8 @@ class TestChatControllerIntegration:
     
     def test_chat_endpoint_integration(self, client: TestClient, sample_chat_data):
         """Test chat endpoint through FastAPI test client."""
-        with patch("app.controller.chat_controller.create_task_lock") as mock_create_lock, \
+        with patch("app.controller.chat_controller.get_or_create_task_lock") as mock_create_lock, \
              patch("app.controller.chat_controller.step_solve") as mock_step_solve, \
-             patch("app.controller.chat_controller.load_dotenv"), \
              patch("pathlib.Path.mkdir"), \
              patch("pathlib.Path.home", return_value=MagicMock()):
             
@@ -350,8 +343,7 @@ class TestChatControllerErrorCases:
         """Test chat endpoint when environment setup fails."""
         chat_data = Chat(**sample_chat_data)
         
-        with patch("app.controller.chat_controller.create_task_lock") as mock_create_lock, \
-             patch("app.controller.chat_controller.load_dotenv", side_effect=Exception("Env load failed")), \
+        with patch("app.controller.chat_controller.get_or_create_task_lock") as mock_create_lock, \
              patch("pathlib.Path.mkdir", side_effect=Exception("Directory creation failed")):
             
             mock_task_lock = MagicMock()

@@ -18,7 +18,7 @@ import asyncio
 from textwrap import indent
 from typing import Any, Dict, List
 from camel.toolkits import FunctionTool
-from app.component.environment import env
+from app.service.task import get_task_lock_if_exists
 from app.utils.toolkit.abstract_toolkit import AbstractToolkit
 from camel.toolkits.mcp_toolkit import MCPToolkit
 import logging
@@ -52,11 +52,13 @@ class NotionMCPToolkit(MCPToolkit, AbstractToolkit):
         self,
         api_task_id: str,
         timeout: float | None = None,
+        mcp_remote_config_dir: str | None = None,
     ):
         self.api_task_id = api_task_id
         if timeout is None:
             timeout = 120.0
-        
+        # Credentials/config only from Chat.extra_params["notion_mcp"] or default path (no env).
+        config_dir = mcp_remote_config_dir or os.path.expanduser("~/.mcp-auth")
         config_dict={
             "mcpServers": {
                 "notionMCP": {
@@ -67,7 +69,7 @@ class NotionMCPToolkit(MCPToolkit, AbstractToolkit):
                         "https://mcp.notion.com/mcp",
                     ],
                     "env": {
-                        "MCP_REMOTE_CONFIG_DIR": env("MCP_REMOTE_CONFIG_DIR", os.path.expanduser("~/.mcp-auth")),
+                        "MCP_REMOTE_CONFIG_DIR": config_dir,
                     },
                 }
             }
@@ -76,6 +78,16 @@ class NotionMCPToolkit(MCPToolkit, AbstractToolkit):
 
     @classmethod
     async def get_can_use_tools(cls, api_task_id: str) -> list[FunctionTool]:
+        # Config from Chat.extra_params["notion_mcp"]: user sends "config" (base64 of zipped entire folder); we unzip to project path and pass dir.
+        from app.utils.extra_params_config import get_unified, write_config_folder_to_project
+        task_lock = get_task_lock_if_exists(api_task_id)
+        if not task_lock:
+            return []
+        notion_mcp = (getattr(task_lock, "extra_params", None) or {}).get("notion_mcp") or {}
+        config_b64 = get_unified(notion_mcp, "config")
+        if not config_b64:
+            return []
+        config_dir = write_config_folder_to_project(api_task_id, "notion_mcp", config_b64)
         # Retry mechanism for remote MCP connection
         max_retries = 3
         retry_delay = 2  # seconds
@@ -86,7 +98,7 @@ class NotionMCPToolkit(MCPToolkit, AbstractToolkit):
             
             try:
                 # Create a fresh toolkit instance for each retry
-                toolkit = cls(api_task_id)
+                toolkit = cls(api_task_id, mcp_remote_config_dir=config_dir)
                 logger.info(f"Attempting to connect to Notion MCP server (attempt {attempt + 1}/{max_retries})")
                 
                 await toolkit.connect()

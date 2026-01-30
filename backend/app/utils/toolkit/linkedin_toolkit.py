@@ -14,8 +14,7 @@
 
 from camel.toolkits import LinkedInToolkit as BaseLinkedInToolkit
 from camel.toolkits.function_tool import FunctionTool
-from app.component.environment import env
-from app.service.task import Agents
+from app.service.task import Agents, get_task_lock_if_exists
 from app.utils.listen.toolkit_listen import auto_listen_toolkit
 from app.utils.toolkit.abstract_toolkit import AbstractToolkit
 
@@ -30,7 +29,12 @@ class LinkedInToolkit(BaseLinkedInToolkit, AbstractToolkit):
 
     @classmethod
     def get_can_use_tools(cls, api_task_id: str) -> list[FunctionTool]:
-        if env("LINKEDIN_ACCESS_TOKEN"):
-            return LinkedInToolkit(api_task_id).get_tools()
-        else:
+        # Credentials from Chat.extra_params["linkedin"] (unified: access_token).
+        from app.utils.extra_params_config import get_unified
+        task_lock = get_task_lock_if_exists(api_task_id)
+        if not task_lock:
             return []
+        li = (getattr(task_lock, "extra_params", None) or {}).get("linkedin") or {}
+        if get_unified(li, "access_token", "LINKEDIN_ACCESS_TOKEN"):
+            return LinkedInToolkit(api_task_id).get_tools()
+        return []

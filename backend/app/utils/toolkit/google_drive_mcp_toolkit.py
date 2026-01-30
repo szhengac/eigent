@@ -14,8 +14,7 @@
 
 from camel.toolkits import GoogleDriveMCPToolkit as BaseGoogleDriveMCPToolkit, MCPToolkit
 from app.component.command import bun
-from app.component.environment import env
-from app.service.task import Agents
+from app.service.task import Agents, get_task_lock_if_exists
 from app.utils.toolkit.abstract_toolkit import AbstractToolkit
 from camel.toolkits.function_tool import FunctionTool
 
@@ -28,18 +27,22 @@ class GoogleDriveMCPToolkit(BaseGoogleDriveMCPToolkit, AbstractToolkit):
         api_task_id: str,
         timeout: float | None = None,
         credentials_path: str | None = None,
+        token_path: str | None = None,
         input_env: dict[str, str] | None = None,
     ) -> None:
         self.api_task_id = api_task_id
         super().__init__(timeout, credentials_path)
-        credentials_path = credentials_path or env("GDRIVE_CREDENTIALS_PATH")
         self._mcp_toolkit = MCPToolkit(
             config_dict={
                 "mcpServers": {
                     "gdrive": {
                         "command": bun(),
-                        "args": ["x", "-y", "@modelcontextprotocol/server-gdrive"],
-                        "env": {"GDRIVE_CREDENTIALS_PATH": credentials_path, **(input_env or {})},
+                        "args": ["x", "-y", "@piotr-agier/google-drive-mcp"],
+                        "env": {
+                            "GOOGLE_DRIVE_OAUTH_CREDENTIALS": credentials_path or "",
+                            "GOOGLE_DRIVE_MCP_TOKEN_PATH": token_path or "",
+                            **(input_env or {}),
+                        },
                     }
                 }
             },
@@ -48,9 +51,30 @@ class GoogleDriveMCPToolkit(BaseGoogleDriveMCPToolkit, AbstractToolkit):
 
     @classmethod
     async def get_can_use_tools(cls, api_task_id: str, input_env: dict[str, str] | None = None) -> list[FunctionTool]:
-        if env("GDRIVE_CREDENTIALS_PATH") is None:
+        # Credentials from Chat.extra_params["google_drive"]: user sends "credentials" and "token" (both base64); we save to project path.
+        from app.utils.extra_params_config import get_unified, write_content_to_project
+
+        task_lock = get_task_lock_if_exists(api_task_id)
+        if not task_lock:
             return []
-        toolkit = cls(api_task_id, 180, env("GDRIVE_CREDENTIALS_PATH"), input_env)
+        gdrive = (getattr(task_lock, "extra_params", None) or {}).get("google_drive") or {}
+        credentials_b64 = get_unified(gdrive, "credentials")
+        token_b64 = get_unified(gdrive, "token")
+        if not credentials_b64 or not token_b64:
+            return []
+        credentials_path = write_content_to_project(
+            api_task_id, "google_drive", credentials_b64, filename_suffix="credentials.json"
+        )
+        token_path = write_content_to_project(
+            api_task_id, "google_drive", token_b64, filename_suffix="token.json"
+        )
+        toolkit = cls(
+            api_task_id,
+            timeout=180,
+            credentials_path=credentials_path,
+            token_path=token_path,
+            input_env=input_env,
+        )
         await toolkit.connect()
         tools = []
         for item in toolkit.get_tools():

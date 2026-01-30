@@ -16,7 +16,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     CHROME_DISABLE_COMPONENTS=GCM,MediaRouter \
     DBUS_SESSION_BUS_ADDRESS=/run/dbus/system_bus_socket
 
-WORKDIR /app
+WORKDIR /workspace
 
 # -----------------------------
 # System dependencies

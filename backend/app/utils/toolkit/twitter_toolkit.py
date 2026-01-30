@@ -21,8 +21,7 @@ from camel.toolkits.twitter_toolkit import (
     get_user_by_username,
 )
 
-from app.component.environment import env
-from app.service.task import Agents
+from app.service.task import Agents, get_task_lock_if_exists
 from app.utils.listen.toolkit_listen import auto_listen_toolkit, listen_toolkit
 from app.utils.toolkit.abstract_toolkit import AbstractToolkit
 
@@ -79,12 +78,17 @@ class TwitterToolkit(BaseTwitterToolkit, AbstractToolkit):
 
     @classmethod
     def get_can_use_tools(cls, api_task_id: str) -> List[FunctionTool]:
+        # Credentials from Chat.extra_params["twitter"] (unified: access_token, access_token_secret, consumer_key, consumer_secret).
+        from app.utils.extra_params_config import get_unified
+        task_lock = get_task_lock_if_exists(api_task_id)
+        if not task_lock:
+            return []
+        tw = (getattr(task_lock, "extra_params", None) or {}).get("twitter") or {}
         if (
-            env("TWITTER_CONSUMER_KEY")
-            and env("TWITTER_CONSUMER_SECRET")
-            and env("TWITTER_ACCESS_TOKEN")
-            and env("TWITTER_ACCESS_TOKEN_SECRET")
+            get_unified(tw, "consumer_key", "TWITTER_CONSUMER_KEY")
+            and get_unified(tw, "consumer_secret", "TWITTER_CONSUMER_SECRET")
+            and get_unified(tw, "access_token", "TWITTER_ACCESS_TOKEN")
+            and get_unified(tw, "access_token_secret", "TWITTER_ACCESS_TOKEN_SECRET")
         ):
             return TwitterToolkit(api_task_id).get_tools()
-        else:
-            return []
+        return []

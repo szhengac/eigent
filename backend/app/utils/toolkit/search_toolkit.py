@@ -16,9 +16,8 @@ from typing import Any, Dict, List, Literal
 from camel.toolkits import SearchToolkit as BaseSearchToolkit
 from camel.toolkits.function_tool import FunctionTool
 import httpx
-import os
-from app.component.environment import env, env_not_empty
-from app.service.task import Agents
+from app.component.environment import env
+from app.service.task import Agents, get_task_lock_if_exists
 from app.utils.listen.toolkit_listen import auto_listen_toolkit, listen_toolkit
 from app.utils.toolkit.abstract_toolkit import AbstractToolkit
 import logging
@@ -43,32 +42,6 @@ class SearchToolkit(BaseSearchToolkit, AbstractToolkit):
         super().__init__(
             timeout=timeout, exclude_domains=exclude_domains
         )
-        # Cache for user-specific search configurations
-        self._user_google_api_key = None
-        self._user_search_engine_id = None
-        self._config_loaded = False
-
-    def _load_user_search_config(self):
-        """
-        Load user-specific Google Search configuration from user's .env file.
-        This is called lazily when search_google is invoked.
-        """
-        if self._config_loaded:
-            return
-
-        self._config_loaded = True
-
-        # Try to get user-specific configuration from thread-local environment
-        # which is set by the middleware based on the user's project settings
-        google_api_key = env("GOOGLE_API_KEY")
-        search_engine_id = env("SEARCH_ENGINE_ID")
-
-        if google_api_key and search_engine_id:
-            self._user_google_api_key = google_api_key
-            self._user_search_engine_id = search_engine_id
-            logger.info("Loaded user-specific Google Search configuration")
-        else:
-            logger.debug("No user-specific Google Search configuration found, will use cloud search")
 
     # @listen_toolkit(BaseSearchToolkit.search_wiki)
     # def search_wiki(self, entity: str) -> str:
@@ -92,6 +65,14 @@ class SearchToolkit(BaseSearchToolkit, AbstractToolkit):
     # ) -> dict[str, Any]:
     #     return super().search_linkup(query, depth, output_type, structured_output_schema)
 
+    def _get_search_params(self):
+        """Credentials from Chat.extra_params only (no env)."""
+        task_lock = get_task_lock_if_exists(self.api_task_id)
+        if not task_lock:
+            return {}
+        extra = getattr(task_lock, "extra_params", None) or {}
+        return extra.get("search") or {}
+
     @listen_toolkit(
         BaseSearchToolkit.search_google,
         lambda _, query, search_type="web", number_of_result_pages=10, start_page=1: f"with query '{query}', {search_type} type, {number_of_result_pages} result pages starting from page {start_page}",
@@ -103,35 +84,52 @@ class SearchToolkit(BaseSearchToolkit, AbstractToolkit):
         number_of_result_pages: int = 10,
         start_page: int = 1
     ) -> list[dict[str, Any]]:
-        # Load user-specific configuration
-        self._load_user_search_config()
+        # Credentials only from Chat.extra_params["search"] (no env).
+        params = self._get_search_params()
+        google_api_key = params.get("google_api_key") or params.get("GOOGLE_API_KEY")
+        search_engine_id = params.get("search_engine_id") or params.get("SEARCH_ENGINE_ID")
+        cloud_api_key = params.get("cloud_api_key")
 
-        # If user has configured their own Google API keys, use them
-        if self._user_google_api_key and self._user_search_engine_id:
-            logger.info("Using user-configured Google Search API")
-            # Temporarily set environment variables for this search
-            old_google_key = os.environ.get("GOOGLE_API_KEY")
-            old_search_id = os.environ.get("SEARCH_ENGINE_ID")
-
-            try:
-                os.environ["GOOGLE_API_KEY"] = self._user_google_api_key
-                os.environ["SEARCH_ENGINE_ID"] = self._user_search_engine_id
-                return super().search_google(query, search_type, number_of_result_pages, start_page)
-            finally:
-                # Restore original environment variables
-                if old_google_key is not None:
-                    os.environ["GOOGLE_API_KEY"] = old_google_key
-                elif "GOOGLE_API_KEY" in os.environ:
-                    del os.environ["GOOGLE_API_KEY"]
-
-                if old_search_id is not None:
-                    os.environ["SEARCH_ENGINE_ID"] = old_search_id
-                elif "SEARCH_ENGINE_ID" in os.environ:
-                    del os.environ["SEARCH_ENGINE_ID"]
-        else:
-            # Fallback to cloud search
-            logger.info("Using cloud Google Search (no user configuration found)")
+        if google_api_key and search_engine_id:
+            logger.info("Using Google Search API from extra_params")
+            return self._search_google_direct(
+                query, search_type, number_of_result_pages, start_page,
+                google_api_key, search_engine_id,
+            )
+        if cloud_api_key:
+            logger.info("Using cloud Google Search from extra_params")
             return self.cloud_search_google(query, search_type, number_of_result_pages, start_page)
+        raise ValueError(
+            "No search credentials. Include Chat.extra_params['search'] with "
+            "google_api_key + search_engine_id, or cloud_api_key (and optional server_url for proxy)."
+        )
+
+    def _search_google_direct(
+        self,
+        query: str,
+        search_type: str,
+        number_of_result_pages: int,
+        start_page: int,
+        api_key: str,
+        cx: str,
+    ) -> list[dict[str, Any]]:
+        """Call Google Custom Search JSON API. Pagination: start=1,11,21,... (10 per page)."""
+        base_url = "https://www.googleapis.com/customsearch/v1"
+        all_items = []
+        for page in range(number_of_result_pages):
+            start_index = (start_page - 1) * 10 + page * 10 + 1
+            r = httpx.get(
+                base_url,
+                params={"key": api_key, "cx": cx, "q": query, "start": start_index},
+                timeout=30.0,
+            )
+            r.raise_for_status()
+            data = r.json()
+            items = data.get("items") or []
+            all_items.extend(items)
+            if len(items) < 10:
+                break
+        return all_items
 
     def cloud_search_google(
         self,
@@ -139,19 +137,28 @@ class SearchToolkit(BaseSearchToolkit, AbstractToolkit):
         search_type: str = "web",
         number_of_result_pages: int = 10,
         start_page: int = 1
-    ):
-        url = env_not_empty("SERVER_URL")
+    ) -> list[dict[str, Any]]:
+        """Proxy search: credentials from extra_params; server_url from env (server config)."""
+        params = self._get_search_params()
+        cloud_api_key = params.get("cloud_api_key")
+        if not cloud_api_key:
+            raise ValueError("Chat.extra_params['search']['cloud_api_key'] required for cloud search.")
+        server_url = params.get("server_url") or env("SERVER_URL")
+        if not server_url:
+            raise ValueError("Chat.extra_params['search']['server_url'] or SERVER_URL env required for cloud search.")
         res = httpx.get(
-            url + "/proxy/google",
+            server_url.rstrip("/") + "/proxy/google",
             params={
                 "query": query,
                 "search_type": search_type,
                 "number_of_result_pages": number_of_result_pages,
                 "start_page": start_page
             },
-            headers={"api-key": env_not_empty("cloud_api_key")},
+            headers={"api-key": cloud_api_key},
+            timeout=30.0,
         )
         return res.json()
+
 
     # @listen_toolkit(
     #     BaseSearchToolkit.search_duckduckgo,
@@ -353,34 +360,20 @@ class SearchToolkit(BaseSearchToolkit, AbstractToolkit):
 
     @classmethod
     def get_can_use_tools(cls, api_task_id: str) -> list[FunctionTool]:
+        # Credentials only from Chat.extra_params["search"] (no env).
+        task_lock = get_task_lock_if_exists(api_task_id)
+        if not task_lock:
+            return []
+        extra = getattr(task_lock, "extra_params", None) or {}
+        params = extra.get("search") or {}
+        has_direct = (params.get("google_api_key") or params.get("GOOGLE_API_KEY")) and (
+            params.get("search_engine_id") or params.get("SEARCH_ENGINE_ID")
+        )
+        has_cloud = bool(params.get("cloud_api_key"))
+        if not (has_direct or has_cloud):
+            return []
         search_toolkit = SearchToolkit(api_task_id)
-        tools = [
-            # FunctionTool(search_toolkit.search_wiki),
-            # FunctionTool(search_toolkit.search_duckduckgo),
-            # FunctionTool(search_toolkit.search_baidu),
-            # FunctionTool(search_toolkit.search_bing),
-        ]
-        # if env("LINKUP_API_KEY"):
-        #     tools.append(FunctionTool(search_toolkit.search_linkup))
-
-        # if env("BRAVE_API_KEY"):
-        #     tools.append(FunctionTool(search_toolkit.search_brave))
-
-        if (env("GOOGLE_API_KEY") and env("SEARCH_ENGINE_ID")) or env("cloud_api_key"):
-            tools.append(FunctionTool(search_toolkit.search_google))
-
-        # if env("TAVILY_API_KEY"):
-        #     tools.append(FunctionTool(search_toolkit.tavily_search))
-
-        # if env("BOCHA_API_KEY"):
-        #     tools.append(FunctionTool(search_toolkit.search_bocha))
-
-        # if env("EXA_API_KEY") or env("cloud_api_key"):
-        #     tools.append(FunctionTool(search_toolkit.search_exa))
-
-        # if env("TONGXIAO_API_KEY"):
-        #     tools.append(FunctionTool(search_toolkit.search_alibaba_tongxiao))
-        return tools
+        return [FunctionTool(search_toolkit.search_google)]
 
     # def get_tools(self) -> List[FunctionTool]:
     #     return [FunctionTool(self.search_exa)]

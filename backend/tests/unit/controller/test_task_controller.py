@@ -98,7 +98,6 @@ class TestTaskController:
         )
         
         with patch("app.controller.task_controller.get_task_lock", return_value=mock_task_lock), \
-             patch("app.controller.task_controller.load_dotenv"), \
              patch("asyncio.run") as mock_run:
             
             response = add_agent(task_id, new_agent)
@@ -141,7 +140,6 @@ class TestTaskController:
         )
         
         with patch("app.controller.task_controller.get_task_lock", return_value=mock_task_lock), \
-             patch("app.controller.task_controller.load_dotenv"), \
              patch("asyncio.run") as mock_run:
             
             response = add_agent(task_id, new_agent)
@@ -231,7 +229,6 @@ class TestTaskControllerIntegration:
         }
         
         with patch("app.controller.task_controller.get_task_lock") as mock_get_lock, \
-             patch("app.controller.task_controller.load_dotenv"), \
              patch("asyncio.run"):
             
             mock_task_lock = MagicMock()
@@ -280,8 +277,8 @@ class TestTaskControllerErrorCases:
         with pytest.raises((ValueError, TypeError)):
             TakeControl(action="invalid_action")
 
-    def test_add_agent_env_load_failure(self, mock_task_lock):
-        """Test add agent when environment loading fails."""
+    def test_add_agent_ignores_env_path(self, mock_task_lock):
+        """Server mode: env_path is ignored when adding agents."""
         task_id = "test_task_123"
         new_agent = NewAgent(
             name="Test Agent",
@@ -292,12 +289,10 @@ class TestTaskControllerErrorCases:
         )
         
         with patch("app.controller.task_controller.get_task_lock", return_value=mock_task_lock), \
-             patch("app.controller.task_controller.load_dotenv", side_effect=Exception("Env load failed")), \
-             patch("asyncio.run"):
-            
-            # Should handle environment load failure gracefully or raise error
-            with pytest.raises(Exception, match="Env load failed"):
-                add_agent(task_id, new_agent)
+             patch("asyncio.run") as mock_run:
+            response = add_agent(task_id, new_agent)
+            assert response.status_code == 204
+            mock_run.assert_called_once()
 
     def test_add_agent_with_empty_name(self, mock_task_lock):
         """Test add agent with empty name."""
@@ -311,7 +306,6 @@ class TestTaskControllerErrorCases:
         )
         
         with patch("app.controller.task_controller.get_task_lock", return_value=mock_task_lock), \
-             patch("app.controller.task_controller.load_dotenv"), \
              patch("asyncio.run"):
             
             # Should handle empty name appropriately

@@ -35,6 +35,6 @@ class VideoDownloaderToolkit(BaseVideoDownloaderToolkit, AbstractToolkit):
         timeout: float | None = None,
     ) -> None:
         if working_directory is None:
-            working_directory = env("file_save_path", os.path.expanduser("~/Downloads"))
+            working_directory = env("EIGENT_DATA_DIR", os.path.expanduser("~/.eigent/server_data"))
         super().__init__(working_directory, cookies_path, timeout)
         self.api_task_id = api_task_id

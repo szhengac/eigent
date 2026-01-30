@@ -13,7 +13,6 @@
 # ========= Copyright 2025-2026 @ Eigent.ai All Rights Reserved. =========
 
 from typing import Literal
-from dotenv import load_dotenv
 from fastapi import APIRouter, Response
 from pydantic import BaseModel
 from app.model.chat import NewAgent, UpdateData
@@ -28,7 +27,6 @@ from app.service.task import (
     task_locks,
 )
 import asyncio
-from app.component.environment import set_user_env_path, sanitize_env_path
 import logging
 
 logger = logging.getLogger("task_controller")
@@ -73,12 +71,6 @@ def take_control(id: str, data: TakeControl):
 def add_agent(id: str, data: NewAgent):
     logger.info("Adding new agent to task", extra={"task_id": id, "agent_name": data.name})
     logger.debug("New agent data", extra={"task_id": id, "agent_data": data.model_dump_json()})
-    # Set user-specific environment path for this thread
-    set_user_env_path(data.env_path)
-    # Load environment with validated path
-    safe_env_path = sanitize_env_path(data.env_path)
-    if safe_env_path:
-        load_dotenv(dotenv_path=safe_env_path)
     asyncio.run(get_task_lock(id).put_queue(ActionNewAgent(**data.model_dump())))
     logger.info("Agent added to task", extra={"task_id": id, "agent_name": data.name})
     return Response(status_code=204)

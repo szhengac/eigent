@@ -71,8 +71,8 @@ class TerminalToolkit(BaseTerminalToolkit, AbstractToolkit):
         if agent_name is not None:
             self.agent_name = agent_name
 
-        # Get base directory from environment
-        base_dir = env("file_save_path", os.path.expanduser("~/.eigent/terminal/"))
+        # Server mode: do not depend on request-mutated env vars.
+        base_dir = env("EIGENT_TERMINAL_DIR", os.path.expanduser("~/.eigent/terminal/"))
 
         if working_directory is None:
             working_directory = base_dir

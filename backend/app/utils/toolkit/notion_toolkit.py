@@ -15,8 +15,7 @@
 from typing import List
 from camel.toolkits import NotionToolkit as BaseNotionToolkit
 from camel.toolkits.function_tool import FunctionTool
-from app.component.environment import env
-from app.service.task import Agents
+from app.service.task import Agents, get_task_lock_if_exists
 from app.utils.listen.toolkit_listen import auto_listen_toolkit
 from app.utils.toolkit.abstract_toolkit import AbstractToolkit
 
@@ -36,7 +35,13 @@ class NotionToolkit(BaseNotionToolkit, AbstractToolkit):
 
     @classmethod
     def get_can_use_tools(cls, api_task_id: str) -> List[FunctionTool]:
-        if env("NOTION_TOKEN"):
-            return NotionToolkit(api_task_id).get_tools()
-        else:
+        # Credentials from Chat.extra_params["notion"] (unified: access_token).
+        from app.utils.extra_params_config import get_unified
+        task_lock = get_task_lock_if_exists(api_task_id)
+        if not task_lock:
             return []
+        notion = (getattr(task_lock, "extra_params", None) or {}).get("notion") or {}
+        token = get_unified(notion, "access_token", "notion_token", "NOTION_TOKEN")
+        if not token:
+            return []
+        return NotionToolkit(api_task_id, notion_token=token).get_tools()

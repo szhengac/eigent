@@ -14,11 +14,9 @@
 
 import asyncio
 import os
-import re
 import time
 from pathlib import Path
-from dotenv import load_dotenv
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, Request, Response
 from fastapi.responses import StreamingResponse
 import logging
 from app.component import code
@@ -40,9 +38,6 @@ from app.service.task import (
     delete_task_lock,
     task_locks,
 )
-from app.component.environment import set_user_env_path, sanitize_env_path
-from app.utils.workforce import Workforce
-from camel.tasks.task import Task
 
 
 router = APIRouter()
@@ -135,41 +130,18 @@ async def post(data: Chat, request: Request):
 
     task_lock = get_or_create_task_lock(data.project_id)
 
-    # Set user-specific environment path for this thread
-    set_user_env_path(data.env_path)
-    # Load environment with validated path
-    safe_env_path = sanitize_env_path(data.env_path)
-    if safe_env_path:
-        load_dotenv(dotenv_path=safe_env_path)
-
-    os.environ["file_save_path"] = data.file_save_path()
-    os.environ["browser_port"] = str(data.browser_port)
-    os.environ["OPENAI_API_KEY"] = data.api_key
-    os.environ["OPENAI_API_BASE_URL"] = data.api_url or "https://api.openai.com/v1"
-    os.environ["CAMEL_MODEL_LOG_ENABLED"] = "true"
-
-    # Set user-specific search engine configuration if provided
-    if data.search_config:
-        for key, value in data.search_config.items():
-            if value:
-                os.environ[key] = value
-                chat_logger.debug(f"Set search config: {key}", extra={"project_id": data.project_id})
-
-    email_sanitized = re.sub(r'[\\/*?:"<>|\s]', "_", data.email.split("@")[0]).strip(".")
-    camel_log = (
-        Path.home()
-        / ".eigent"
-        / email_sanitized
-        / ("project_" + data.project_id)
-        / ("task_" + data.task_id)
-        / "camel_logs"
-    )
+    # Server mode: requests must not mutate process-wide environment or load user-provided env files.
+    # Derive per-project/task paths from server-owned data dir.
+    task_root = Path(data.file_save_path())
+    camel_log = task_root / "camel_logs"
     camel_log.mkdir(parents=True, exist_ok=True)
 
-    os.environ["CAMEL_LOG_DIR"] = str(camel_log)
+    # Store paths on task_lock from Chat.file_save_path (do not use os.environ)
+    task_lock.file_save_path = data.file_save_path()
+    task_lock.camel_log_dir = camel_log
 
-    if data.is_cloud():
-        os.environ["cloud_api_key"] = data.api_key
+    # Copy Chat.extra_params onto task_lock so toolkits (e.g. Google Calendar) can read request-scoped tokens
+    task_lock.extra_params = data.extra_params or {}
 
     # Set the initial current_task_id in task_lock
     set_current_task_id(data.project_id, data.task_id)
@@ -207,35 +179,22 @@ def improve(id: str, data: SupplementChat):
         if hasattr(task_lock, "last_task_result"):
             chat_logger.info(f"[CONTEXT] Preserved task result: {len(task_lock.last_task_result)} chars")
 
-    # If task_id is provided, optimistically update file_save_path (will be destroyed if task is not complex)
-    # this is because a NEW workforce instance may be created for this task
-    new_folder_path = None
+    # If task_id is provided, optimistically update working directory (stored on task_lock).
+    # This avoids any process-wide env mutation and supports multi-user concurrency.
+    new_folder_path: Path | None = None
     if data.task_id:
         try:
-            # Get current environment values needed to construct new path
-            current_email = None
-
-            # Extract email from current file_save_path if available
-            current_file_save_path = os.environ.get("file_save_path", "")
-            if current_file_save_path:
-                path_parts = Path(current_file_save_path).parts
-                if len(path_parts) >= 3 and "eigent" in path_parts:
-                    eigent_index = path_parts.index("eigent")
-                    if eigent_index + 1 < len(path_parts):
-                        current_email = path_parts[eigent_index + 1]
-
-            # If we have the necessary information, update the file_save_path
-            if current_email and id:
-                # Create new path using the existing pattern: email/project_{project_id}/task_{task_id}
-                new_folder_path = Path.home() / "eigent" / current_email / f"project_{id}" / f"task_{data.task_id}"
+            if id:
+                # Derive from server-owned data directory (same as Chat.file_save_path()).
+                base = os.getenv("EIGENT_DATA_DIR") or str(Path.home() / ".eigent" / "server_data")
+                new_folder_path = Path(base) / "projects" / f"project_{id}" / f"task_{data.task_id}"
                 new_folder_path.mkdir(parents=True, exist_ok=True)
-                os.environ["file_save_path"] = str(new_folder_path)
-                chat_logger.info(f"Updated file_save_path to: {new_folder_path}")
+                chat_logger.info(f"Updated working directory to: {new_folder_path}")
 
                 # Store the new folder path in task_lock for potential cleanup and persistence
                 task_lock.new_folder_path = new_folder_path
             else:
-                chat_logger.warning(f"Could not update file_save_path - email: {current_email}, project_id: {id}")
+                chat_logger.warning(f"Could not update working directory - project_id: {id}")
 
         except Exception as e:
             chat_logger.error(f"Error updating file path for project_id: {id}, task_id: {data.task_id}: {e}")
@@ -266,9 +225,9 @@ def stop(id: str):
     try:
         task_lock = get_task_lock(id)
         chat_logger.info(f"[STOP-BUTTON] Task lock retrieved, task_lock.id: {task_lock.id}, task_lock.status: {task_lock.status}")
-        chat_logger.info(f"[STOP-BUTTON] Queueing ActionStopData(Action.stop) to task_lock queue")
+        chat_logger.info("[STOP-BUTTON] Queueing ActionStopData(Action.stop) to task_lock queue")
         asyncio.run(task_lock.put_queue(ActionStopData(action=Action.stop)))
-        chat_logger.info(f"[STOP-BUTTON] ✅ ActionStopData queued successfully, this will trigger workforce.stop_gracefully()")
+        chat_logger.info("[STOP-BUTTON] ✅ ActionStopData queued successfully, this will trigger workforce.stop_gracefully()")
     except Exception as e:
         # Task lock may not exist if task is already finished or never started
         chat_logger.warning(f"[STOP-BUTTON] ⚠️  Task lock not found or already stopped, task_id: {id}, error: {str(e)}")
@@ -349,7 +308,7 @@ def skip_task(project_id: str):
     - Keeps SSE connection alive for multi-turn conversation
     """
     chat_logger.info("=" * 80)
-    chat_logger.info(f"🛑 [STOP-BUTTON] SKIP-TASK request received from frontend (User clicked Stop)")
+    chat_logger.info("🛑 [STOP-BUTTON] SKIP-TASK request received from frontend (User clicked Stop)")
     chat_logger.info(f"[STOP-BUTTON] project_id: {project_id}")
     chat_logger.info("=" * 80)
     task_lock = get_task_lock(project_id)
@@ -358,10 +317,10 @@ def skip_task(project_id: str):
     try:
         # Queue the skip task action - this will preserve context for multi-turn
         skip_task_action = ActionSkipTaskData(project_id=project_id)
-        chat_logger.info(f"[STOP-BUTTON] Queueing ActionSkipTaskData (preserves context, marks as done)")
+        chat_logger.info("[STOP-BUTTON] Queueing ActionSkipTaskData (preserves context, marks as done)")
         asyncio.run(task_lock.put_queue(skip_task_action))
 
-        chat_logger.info(f"[STOP-BUTTON] ✅ Skip request queued - task will stop gracefully and preserve context")
+        chat_logger.info("[STOP-BUTTON] ✅ Skip request queued - task will stop gracefully and preserve context")
         return Response(status_code=201)
 
     except Exception as e:

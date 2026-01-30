@@ -15,8 +15,7 @@
 from typing import Any, Dict, List
 from camel.toolkits import WhatsAppToolkit as BaseWhatsAppToolkit
 from camel.toolkits.function_tool import FunctionTool
-from app.component.environment import env
-from app.service.task import Agents
+from app.service.task import Agents, get_task_lock_if_exists
 from app.utils.listen.toolkit_listen import auto_listen_toolkit
 from app.utils.toolkit.abstract_toolkit import AbstractToolkit
 
@@ -31,7 +30,12 @@ class WhatsAppToolkit(BaseWhatsAppToolkit, AbstractToolkit):
 
     @classmethod
     def get_can_use_tools(cls, api_task_id: str) -> list[FunctionTool]:
-        if env("WHATSAPP_ACCESS_TOKEN") and env("WHATSAPP_PHONE_NUMBER_ID"):
-            return WhatsAppToolkit(api_task_id).get_tools()
-        else:
+        # Credentials from Chat.extra_params["whatsapp"] (unified: access_token, phone_number_id).
+        from app.utils.extra_params_config import get_unified
+        task_lock = get_task_lock_if_exists(api_task_id)
+        if not task_lock:
             return []
+        wa = (getattr(task_lock, "extra_params", None) or {}).get("whatsapp") or {}
+        if get_unified(wa, "access_token", "WHATSAPP_ACCESS_TOKEN") and get_unified(wa, "phone_number_id", "WHATSAPP_PHONE_NUMBER_ID"):
+            return WhatsAppToolkit(api_task_id).get_tools()
+        return []

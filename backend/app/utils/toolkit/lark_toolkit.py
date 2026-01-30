@@ -15,7 +15,7 @@
 from camel.toolkits import LarkToolkit as BaseLarkToolkit
 from camel.toolkits.function_tool import FunctionTool
 
-from app.component.environment import env
+from app.service.task import get_task_lock_if_exists
 from app.utils.listen.toolkit_listen import auto_listen_toolkit
 from app.utils.toolkit.abstract_toolkit import AbstractToolkit
 
@@ -29,6 +29,12 @@ class LarkToolkit(BaseLarkToolkit, AbstractToolkit):
 
     @classmethod
     def get_can_use_tools(cls, api_task_id: str) -> list[FunctionTool]:
-        if env("LARK_APP_ID") and env("LARK_APP_SECRET"):
+        # Credentials from Chat.extra_params["lark"] (unified: app_id, app_secret).
+        from app.utils.extra_params_config import get_unified
+        task_lock = get_task_lock_if_exists(api_task_id)
+        if not task_lock:
+            return []
+        lark = (getattr(task_lock, "extra_params", None) or {}).get("lark") or {}
+        if get_unified(lark, "app_id", "LARK_APP_ID") and get_unified(lark, "app_secret", "LARK_APP_SECRET"):
             return LarkToolkit(api_task_id).get_tools()
         return []

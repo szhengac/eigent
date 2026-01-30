@@ -15,11 +15,11 @@
 from enum import Enum
 import json
 from pathlib import Path
-import re
 from typing import Literal
 from pydantic import BaseModel, Field, field_validator
 from camel.types import ModelType, RoleType
 import logging
+import os
 
 logger = logging.getLogger("chat_model")
 
@@ -61,8 +61,6 @@ class Chat(BaseModel):
     attaches: list[str] = []
     model_platform: str
     model_type: str
-    api_key: str
-    api_url: str | None = None  # for cloud version, user don't need to set api_url
     language: str = "en"
     browser_port: int = 9222
     max_retries: int = 3
@@ -70,7 +68,6 @@ class Chat(BaseModel):
     installed_mcp: McpServers = {"mcpServers": {}}
     bun_mirror: str = ""
     uvx_mirror: str = ""
-    env_path: str | None = None
     summary_prompt: str = (
         "After completing the task, please generate a summary of the entire task completion. "
         "The summary must be enclosed in <summary></summary> tags and include:\n"
@@ -80,8 +77,11 @@ class Chat(BaseModel):
         "Adopt a confident and professional tone."
     )
     new_agents: list["NewAgent"] = []
-    extra_params: dict | None = None  # For provider-specific parameters like Azure
-    search_config: dict[str, str] | None = None  # User-specific search engine configurations (e.g., GOOGLE_API_KEY, SEARCH_ENGINE_ID)
+    # Request-scoped credentials for toolkits. Use unified key names: access_token, client_id, client_secret, etc.
+    # Example: {"twitter": {"access_token": "...", "access_token_secret": "...", "consumer_key": "...", "consumer_secret": "..."}}
+    # For tools that need a file path (saved under Chat.file_save_path): send base64-encoded content under "credentials", "token", or "config".
+    # google_gmail: extra_params["google_gmail"]["credentials"]. google_drive: "credentials" and "token". notion_mcp: "config" (base64 of zipped folder).
+    extra_params: dict | None = None
 
     @field_validator("model_platform")
     @classmethod
@@ -108,9 +108,11 @@ class Chat(BaseModel):
         return self.api_url is not None and "44.247.171.124" in self.api_url
 
     def file_save_path(self, path: str | None = None):
-        email = re.sub(r'[\\/*?:"<>|\s]', "_", self.email.split("@")[0]).strip(".")
-        # Use project-based structure: project_{project_id}/task_{task_id}
-        save_path = Path.home() / "eigent" / email / f"project_{self.project_id}" / f"task_{self.task_id}"
+        # Server-owned data directory root
+        # Operator can override with EIGENT_DATA_DIR (recommended for deployments).
+        base = os.getenv("EIGENT_DATA_DIR") or str(Path.home() / ".eigent" / "server_data")
+        # Project-based structure (no user-specific component)
+        save_path = Path(base) / "projects" / f"project_{self.project_id}" / f"task_{self.task_id}"
         if path is not None:
             save_path = save_path / path
         save_path.mkdir(parents=True, exist_ok=True)
@@ -161,7 +163,6 @@ class NewAgent(BaseModel):
     description: str
     tools: list[str]
     mcp_tools: McpServers | None
-    env_path: str | None = None
     custom_model_config: AgentModelConfig | None = None
 
 

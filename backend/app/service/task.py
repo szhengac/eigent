@@ -25,6 +25,7 @@ from contextvars import ContextVar
 from datetime import datetime, timedelta
 import weakref
 import logging
+from app.utils.oauth_state_manager import oauth_state_manager
 
 logger = logging.getLogger("task_service")
 
@@ -306,6 +307,8 @@ class TaskLock:
     """Track if summary has been generated for this project"""
     current_task_id: Optional[str]
     """Current task ID to be used in SSE responses"""
+    extra_params: dict | None = None
+    """Extra parameters for the task"""
 
     def __init__(self, id: str, queue: asyncio.Queue, human_input: dict) -> None:
         self.id = id
@@ -482,6 +485,13 @@ async def delete_task_lock(id: str):
     task_lock = task_locks[id]
     logger.info("Cleaning up task lock", extra={"task_id": id, "background_tasks": len(task_lock.background_tasks)})
     await task_lock.cleanup()
+
+    # Clear per-project OAuth state when chat ends
+    oauth_state_manager.clear_project(id)
+
+    # Remove credentials written to project working directory
+    from app.utils.extra_params_config import cleanup_project_credentials
+    cleanup_project_credentials(id)
 
     del task_locks[id]
     logger.info("Task lock deleted successfully", extra={"task_id": id, "remaining_task_locks": len(task_locks)})

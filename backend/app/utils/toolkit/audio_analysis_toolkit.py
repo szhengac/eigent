@@ -35,6 +35,8 @@ class AudioAnalysisToolkit(BaseAudioAnalysisToolkit, AbstractToolkit):
         timeout: float | None = None,
     ):
         if cache_dir is None:
-            cache_dir = env("file_save_path", os.path.expanduser("~/.eigent/tmp/"))
+            # Server mode: derive from server-owned data dir, not request-mutated env vars
+            cache_dir = env("EIGENT_DATA_DIR", os.path.expanduser("~/.eigent/server_data"))
+            cache_dir = os.path.join(cache_dir, "tmp")
         super().__init__(cache_dir, transcribe_model, audio_reasoning_model, timeout)
         self.api_task_id = api_task_id

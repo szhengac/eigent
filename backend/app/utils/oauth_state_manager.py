@@ -59,49 +59,69 @@ class OAuthState:
         }
 
 
+def _state_key(project_id: str, provider: str) -> str:
+    """Key for per-project OAuth state."""
+    return f"{project_id}:{provider}"
+
+
 class OAuthStateManager:
-    """Manager for tracking OAuth authorization flows"""
-    
+    """Manager for tracking OAuth authorization flows. State is stored per project and cleared when chat ends."""
+
     def __init__(self):
         self._states: Dict[str, OAuthState] = {}
         self._lock = threading.Lock()
-    
-    def create_state(self, provider: str) -> OAuthState:
-        """Create a new OAuth state for a provider"""
+
+    def create_state(self, provider: str, project_id: str = "install") -> OAuthState:
+        """Create a new OAuth state for a provider in a project. Use project_id='install' for tool install flow."""
+        key = _state_key(project_id, provider)
         with self._lock:
-            # Cancel any existing authorization for this provider
-            if provider in self._states:
-                old_state = self._states[provider]
+            if key in self._states:
+                old_state = self._states[key]
                 if old_state.status in ["pending", "authorizing"]:
                     old_state.cancel()
-                    logger.info(f"Cancelled previous {provider} authorization")
-            
+                    logger.info(f"Cancelled previous {provider} authorization for project {project_id}")
             state = OAuthState(provider)
-            self._states[provider] = state
+            self._states[key] = state
             return state
-    
-    def get_state(self, provider: str) -> Optional[OAuthState]:
-        """Get the current state for a provider"""
+
+    def get_state(self, provider: str, project_id: str | None = None) -> Optional[OAuthState]:
+        """Get the current state for a provider. If project_id is None, returns None (caller must pass project_id)."""
+        if project_id is None:
+            return None
+        key = _state_key(project_id, provider)
         with self._lock:
-            return self._states.get(provider)
-    
+            return self._states.get(key)
+
     def update_status(
         self,
         provider: str,
         status: AuthStatus,
+        project_id: str = "install",
         error: Optional[str] = None,
-        result: Optional[Any] = None
+        result: Optional[Any] = None,
     ):
-        """Update the status of an authorization flow"""
+        """Update the status of an authorization flow for a project."""
+        key = _state_key(project_id, provider)
         with self._lock:
-            if provider in self._states:
-                state = self._states[provider]
+            if key in self._states:
+                state = self._states[key]
                 state.status = status
                 state.error = error
                 state.result = result
                 if status in ["success", "failed", "cancelled"]:
                     state.completed_at = datetime.now()
-                logger.info(f"Updated {provider} OAuth status to {status}")
+                logger.info(f"Updated {provider} OAuth status to {status} for project {project_id}")
+
+    def clear_project(self, project_id: str) -> None:
+        """Remove all OAuth state for a project. Call when chat ends (e.g. after delete_task_lock)."""
+        with self._lock:
+            to_remove = [k for k in self._states if k.startswith(f"{project_id}:")]
+            for key in to_remove:
+                state = self._states[key]
+                if state.status in ["pending", "authorizing"]:
+                    state.cancel()
+                del self._states[key]
+                logger.info(f"Cleared OAuth state {key}")
     
 # Global instance
 oauth_state_manager = OAuthStateManager()

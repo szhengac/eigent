@@ -14,8 +14,7 @@
 
 from camel.toolkits import SlackToolkit as BaseSlackToolkit
 from camel.toolkits.function_tool import FunctionTool
-from app.component.environment import env
-from app.service.task import Agents
+from app.service.task import Agents, get_task_lock_if_exists
 from app.utils.listen.toolkit_listen import auto_listen_toolkit
 from app.utils.toolkit.abstract_toolkit import AbstractToolkit
 import logging
@@ -33,8 +32,12 @@ class SlackToolkit(BaseSlackToolkit, AbstractToolkit):
 
     @classmethod
     def get_can_use_tools(cls, api_task_id: str) -> list[FunctionTool]:
-        logger.debug(f"slack===={env('SLACK_BOT_TOKEN')}")
-        if env("SLACK_BOT_TOKEN") or env("SLACK_USER_TOKEN"):
-            return SlackToolkit(api_task_id).get_tools()
-        else:
+        # Credentials from Chat.extra_params["slack"] (unified: bot_token or user_token).
+        from app.utils.extra_params_config import get_unified
+        task_lock = get_task_lock_if_exists(api_task_id)
+        if not task_lock:
             return []
+        slack = (getattr(task_lock, "extra_params", None) or {}).get("slack") or {}
+        if get_unified(slack, "bot_token", "SLACK_BOT_TOKEN") or get_unified(slack, "user_token", "SLACK_USER_TOKEN"):
+            return SlackToolkit(api_task_id).get_tools()
+        return []

@@ -12,10 +12,12 @@
 # limitations under the License.
 # ========= Copyright 2025-2026 @ Eigent.ai All Rights Reserved. =========
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Body
+from pydantic import BaseModel
 from app.utils.toolkit.notion_mcp_toolkit import NotionMCPToolkit
 from app.utils.toolkit.google_calendar_toolkit import GoogleCalendarToolkit
 from app.utils.oauth_state_manager import oauth_state_manager
+from app.service.task import get_or_create_task_lock
 import logging
 from camel.toolkits.hybrid_browser_toolkit.hybrid_browser_toolkit_ts import (
     HybridBrowserToolkit as BaseHybridBrowserToolkit,
@@ -28,8 +30,13 @@ logger = logging.getLogger("tool_controller")
 router = APIRouter()
 
 
+class InstallToolBody(BaseModel):
+    """Optional body for install; extra_params (e.g. google_calendar client_id/client_secret) for OAuth."""
+    extra_params: dict | None = None
+
+
 @router.post("/install/tool/{tool}", name="install tool")
-async def install_tool(tool: str):
+async def install_tool(tool: str, body: InstallToolBody | None = Body(None)):
     """
     Install and pre-instantiate a specific MCP tool for authentication
 
@@ -84,9 +91,12 @@ async def install_tool(tool: str):
             )
     elif tool == "google_calendar":
         try:
-            # Try to initialize toolkit - will succeed if credentials exist
+            # Install flow uses project_id='install'; set extra_params from request so OAuth can use client_id/client_secret
+            task_lock = get_or_create_task_lock("install")
+            task_lock.extra_params = (body.extra_params or {}) if body else {}
+
             try:
-                toolkit = GoogleCalendarToolkit("install_auth")
+                toolkit = GoogleCalendarToolkit("install")
                 tools = [tool_func.func.__name__ for tool_func in toolkit.get_tools()]
                 logger.info(f"Successfully initialized Google Calendar toolkit with {len(tools)} tools")
 
@@ -98,17 +108,14 @@ async def install_tool(tool: str):
                     "toolkit_name": "GoogleCalendarToolkit"
                 }
             except ValueError as auth_error:
-                # No credentials - need authorization
                 logger.info(f"No credentials found, starting authorization: {auth_error}")
-
-                # Start background authorization in a new thread
                 logger.info("Starting background Google Calendar authorization")
-                GoogleCalendarToolkit.start_background_auth("install_auth")
+                GoogleCalendarToolkit.start_background_auth("install")
 
                 return {
                     "success": False,
                     "status": "authorizing",
-                    "message": "Authorization required. Browser should open automatically. Complete authorization and try installing again.",
+                    "message": "Authorization required. Include extra_params['google_calendar'] with client_id and client_secret in the request body, then complete OAuth.",
                     "toolkit_name": "GoogleCalendarToolkit",
                     "requires_auth": True
                 }
@@ -154,17 +161,12 @@ async def list_available_tools():
 
 
 @router.get("/oauth/status/{provider}", name="get oauth status")
-async def get_oauth_status(provider: str):
+async def get_oauth_status(provider: str, project_id: str = "install"):
     """
-    Get the current OAuth authorization status for a provider
-
-    Args:
-        provider: OAuth provider name (e.g., 'google_calendar')
-
-    Returns:
-        Current authorization status
+    Get the current OAuth authorization status for a provider and project.
+    Use project_id='install' for the tool install flow.
     """
-    state = oauth_state_manager.get_state(provider)
+    state = oauth_state_manager.get_state(provider, project_id)
 
     if not state:
         return {
@@ -177,17 +179,12 @@ async def get_oauth_status(provider: str):
 
 
 @router.post("/oauth/cancel/{provider}", name="cancel oauth")
-async def cancel_oauth(provider: str):
+async def cancel_oauth(provider: str, project_id: str = "install"):
     """
-    Cancel an ongoing OAuth authorization flow
-
-    Args:
-        provider: OAuth provider name (e.g., 'google_calendar')
-
-    Returns:
-        Cancellation result
+    Cancel an ongoing OAuth authorization flow for a project.
+    Use project_id='install' for the tool install flow.
     """
-    state = oauth_state_manager.get_state(provider)
+    state = oauth_state_manager.get_state(provider, project_id)
 
     if not state:
         raise HTTPException(
@@ -274,30 +271,9 @@ async def uninstall_tool(tool: str):
 
     elif tool == "google_calendar":
         try:
-            # Clean up Google Calendar token directories (user-scoped + legacy)
-            token_dirs = set()
-            try:
-                token_dirs.add(os.path.dirname(GoogleCalendarToolkit._build_canonical_token_path()))
-            except Exception as e:
-                logger.warning(f"Failed to resolve canonical Google Calendar token path: {e}")
-
-            token_dirs.add(os.path.join(os.path.expanduser("~"), ".eigent", "tokens", "google_calendar"))
-
-            for token_dir in token_dirs:
-                if os.path.exists(token_dir):
-                    shutil.rmtree(token_dir)
-                    logger.info(f"Removed Google Calendar token directory: {token_dir}")
-
-            # Clear OAuth state manager cache (this is the key fix!)
-            # This removes the cached credentials from memory
-            state = oauth_state_manager.get_state("google_calendar")
-            if state:
-                if state.status in ["pending", "authorizing"]:
-                    state.cancel()
-                    logger.info("Cancelled ongoing Google Calendar authorization")
-                # Clear the state completely to remove cached credentials
-                oauth_state_manager._states.pop("google_calendar", None)
-                logger.info("Cleared Google Calendar OAuth state cache")
+            # Clear OAuth state for install flow (project_id='install')
+            oauth_state_manager.clear_project("install")
+            logger.info("Cleared Google Calendar OAuth state for install")
 
             return {
                 "success": True,

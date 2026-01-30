@@ -15,8 +15,7 @@
 from typing import Any, Dict, List
 from camel.toolkits import RedditToolkit as BaseRedditToolkit
 from camel.toolkits.function_tool import FunctionTool
-from app.component.environment import env
-from app.service.task import Agents
+from app.service.task import Agents, get_task_lock_if_exists
 from app.utils.listen.toolkit_listen import auto_listen_toolkit
 from app.utils.toolkit.abstract_toolkit import AbstractToolkit
 
@@ -37,7 +36,16 @@ class RedditToolkit(BaseRedditToolkit, AbstractToolkit):
 
     @classmethod
     def get_can_use_tools(cls, api_task_id: str) -> list[FunctionTool]:
-        if env("REDDIT_CLIENT_ID") and env("REDDIT_CLIENT_SECRET") and env("REDDIT_USER_AGENT"):
-            return RedditToolkit(api_task_id).get_tools()
-        else:
+        # Credentials from Chat.extra_params["reddit"] (unified: client_id, client_secret, user_agent).
+        from app.utils.extra_params_config import get_unified
+        task_lock = get_task_lock_if_exists(api_task_id)
+        if not task_lock:
             return []
+        reddit = (getattr(task_lock, "extra_params", None) or {}).get("reddit") or {}
+        if (
+            get_unified(reddit, "client_id", "REDDIT_CLIENT_ID")
+            and get_unified(reddit, "client_secret", "REDDIT_CLIENT_SECRET")
+            and get_unified(reddit, "user_agent", "REDDIT_USER_AGENT")
+        ):
+            return RedditToolkit(api_task_id).get_tools()
+        return []

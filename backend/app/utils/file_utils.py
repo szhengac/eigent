@@ -14,7 +14,6 @@
 
 """File system utilities."""
 
-from app.component.environment import env
 from app.model.chat import Chat
 
 
@@ -31,4 +30,5 @@ def get_working_directory(options: Chat, task_lock=None) -> str:
     if task_lock and hasattr(task_lock, 'new_folder_path') and task_lock.new_folder_path:
         return str(task_lock.new_folder_path)
     else:
-        return env("file_save_path", options.file_save_path())
+        # Server mode: working directory is derived from server-owned data dir.
+        return options.file_save_path()
