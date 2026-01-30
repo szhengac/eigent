@@ -61,6 +61,8 @@ class Chat(BaseModel):
     attaches: list[str] = []
     model_platform: str
     model_type: str
+    api_key: str
+    api_url: str | None = None  # for cloud version, user don't need to set api_url
     language: str = "en"
     browser_port: int = 9222
     max_retries: int = 3
