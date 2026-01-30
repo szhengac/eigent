@@ -173,3 +173,21 @@ def cleanup_project_credentials(api_task_id: str) -> None:
         logger.debug("Cleaned up project credentials", extra={"project_id": api_task_id})
     except OSError as e:
         logger.warning("Failed to cleanup project credentials dir: %s", e)
+
+
+def cleanup_file_save_path(api_task_id: str) -> None:
+    """Remove the entire directory at task_lock.file_save_path (from Chat.file_save_path). Call when chat finishes."""
+    task_lock = get_task_lock_if_exists(api_task_id)
+    if not task_lock:
+        return
+    path = getattr(task_lock, "file_save_path", None)
+    if not path:
+        return
+    dir_path = Path(path)
+    if not dir_path.is_dir():
+        return
+    try:
+        shutil.rmtree(dir_path)
+        logger.debug("Cleaned up file_save_path", extra={"project_id": api_task_id, "path": path})
+    except OSError as e:
+        logger.warning("Failed to cleanup file_save_path %s: %s", path, e)

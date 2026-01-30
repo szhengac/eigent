@@ -17,6 +17,7 @@ from typing import List, Dict, Optional
 from pydantic import BaseModel
 from app.exception.exception import ProgramException
 from app.model.chat import AgentModelConfig, McpServers, Status, SupplementChat, Chat, UpdateData
+from app.utils.extra_params_config import cleanup_project_credentials, cleanup_file_save_path
 import asyncio
 from enum import Enum
 from camel.tasks import Task
@@ -490,8 +491,9 @@ async def delete_task_lock(id: str):
     oauth_state_manager.clear_project(id)
 
     # Remove credentials written to project working directory
-    from app.utils.extra_params_config import cleanup_project_credentials
     cleanup_project_credentials(id)
+    # Remove entire file_save_path directory (from Chat.file_save_path) when chat finishes
+    cleanup_file_save_path(id)
 
     del task_locks[id]
     logger.info("Task lock deleted successfully", extra={"task_id": id, "remaining_task_locks": len(task_locks)})

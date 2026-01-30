@@ -27,7 +27,7 @@ class GoogleDriveMCPToolkit(BaseGoogleDriveMCPToolkit, AbstractToolkit):
         api_task_id: str,
         timeout: float | None = None,
         credentials_path: str | None = None,
-        token_path: str | None = None,
+        tokens_path: str | None = None,
         input_env: dict[str, str] | None = None,
     ) -> None:
         self.api_task_id = api_task_id
@@ -40,7 +40,7 @@ class GoogleDriveMCPToolkit(BaseGoogleDriveMCPToolkit, AbstractToolkit):
                         "args": ["x", "-y", "@piotr-agier/google-drive-mcp"],
                         "env": {
                             "GOOGLE_DRIVE_OAUTH_CREDENTIALS": credentials_path or "",
-                            "GOOGLE_DRIVE_MCP_TOKEN_PATH": token_path or "",
+                            "GOOGLE_DRIVE_MCP_TOKEN_PATH": tokens_path or "",
                             **(input_env or {}),
                         },
                     }
@@ -59,20 +59,20 @@ class GoogleDriveMCPToolkit(BaseGoogleDriveMCPToolkit, AbstractToolkit):
             return []
         gdrive = (getattr(task_lock, "extra_params", None) or {}).get("google_drive") or {}
         credentials_b64 = get_unified(gdrive, "credentials")
-        token_b64 = get_unified(gdrive, "token")
-        if not credentials_b64 or not token_b64:
+        tokens_b64 = get_unified(gdrive, "tokens")
+        if not credentials_b64 or not tokens_b64:
             return []
         credentials_path = write_content_to_project(
             api_task_id, "google_drive", credentials_b64, filename_suffix="credentials.json"
         )
-        token_path = write_content_to_project(
-            api_task_id, "google_drive", token_b64, filename_suffix="token.json"
+        tokens_path = write_content_to_project(
+            api_task_id, "google_drive", tokens_b64, filename_suffix="tokens.json"
         )
         toolkit = cls(
             api_task_id,
             timeout=180,
             credentials_path=credentials_path,
-            token_path=token_path,
+            tokens_path=tokens_path,
             input_env=input_env,
         )
         await toolkit.connect()
