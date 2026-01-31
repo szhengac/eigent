@@ -14,7 +14,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     CHROME_DISABLE_EXTENSIONS=1 \
     CHROME_DISABLE_NOTIFICATIONS=1 \
     CHROME_DISABLE_COMPONENTS=GCM,MediaRouter \
-    DBUS_SESSION_BUS_ADDRESS=/run/dbus/system_bus_socket
+    DBUS_SESSION_BUS_ADDRESS=/run/dbus/system_bus_socket \
+    PATH="/root/.bun/bin:$PATH"
 
 WORKDIR /workspace
 
@@ -25,6 +26,8 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
       build-essential \
       git \
+      curl \
+      unzip \
       chromium \
       chromium-driver \
       dbus \
@@ -45,6 +48,11 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # -----------------------------
+# Install bun (required by Camel MCP)
+# -----------------------------
+RUN curl -fsSL https://bun.sh/install | bash
+
+# -----------------------------
 # Copy backend code
 # -----------------------------
 COPY . .
@@ -58,6 +66,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
       "fastapi>=0.115.12" \
       "fastapi-babel>=1.0.0" \
       "uvicorn[standard]>=0.34.2" \
+      "uvloop>=0.17.0" \
       "pydantic-i18n>=0.4.5" \
       "python-dotenv>=1.1.0" \
       "httpx[socks]>=0.28.1" \

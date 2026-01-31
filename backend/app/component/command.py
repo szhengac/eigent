@@ -16,8 +16,8 @@ import os
 
 
 def bun():
-    return os.path.expanduser("~/.eigent/bin/bun")
+    return "bun"
 
 
 def uv():
-    return os.path.expanduser("~/.local/bin/uv")
+    return "uv"
