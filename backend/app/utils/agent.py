@@ -557,15 +557,7 @@ class ListenChatAgent(ChatAgent):
                 # Try different invocation paths in order of preference
                 if hasattr(tool, "func") and hasattr(tool.func, "async_call"):
                     # Case: FunctionTool wrapping an MCP tool
-                    # Check if the wrapped tool is sync to avoid run_in_executor
-                    if hasattr(tool, "is_async") and not tool.is_async:
-                        # Sync tool: call directly to preserve ContextVar
-                        result = tool(**args)
-                        if asyncio.iscoroutine(result):
-                            result = await result
-                    else:
-                        # Async tool: use async_call
-                        result = await tool.func.async_call(**args)
+                    result = await tool.func.async_call(**args)
 
                 elif hasattr(tool, "async_call") and callable(tool.async_call):
                     # Case: tool itself has async_call
@@ -895,6 +887,10 @@ Your capabilities are extensive and powerful:
   can run any command-line tool, manage files, and interact with the OS. If
   a tool is missing, you MUST install it with the appropriate package manager
   (e.g., `pip3`, `uv`, or `apt-get`). Your capabilities include:
+    - **IMPORTANT:** Before the task gets started, you can use `shell_exec` to
+      run `ls {working_directory}` to check for important files in the working
+      directory, and then use terminal commands like `cat`, `grep`, or `head`
+      to read and examine these files.
     - **Text & Data Processing**: `awk`, `sed`, `grep`, `jq`.
     - **File System & Execution**: `find`, `xargs`, `tar`, `zip`, `unzip`,
       `chmod`.
@@ -1348,6 +1344,10 @@ Your capabilities include:
 - Terminal and File System:
     - You have access to a full suite of terminal tools to interact with
     the file system within your working directory (`{working_directory}`).
+    - **IMPORTANT:** Before the task gets started, you can use `shell_exec` to
+    run `ls {working_directory}` to check for important files in the working
+    directory, and then use terminal commands like `cat`, `grep`, or `head`
+    to read and examine these files.
     - You can execute shell commands (`shell_exec`), list files, and manage
     your workspace as needed to support your document creation tasks. To
     process and manipulate text and data for your documents, you can use
@@ -1552,8 +1552,12 @@ Your capabilities include:
     - Save generated images to specified directories
 
 - Terminal and File System:
-    - You have access to terminal tools to manage media files. You can
-    leverage powerful CLI tools like `ffmpeg` for any necessary video
+    - You have access to terminal tools to manage media files. **IMPORTANT:**
+    Before the task gets started, you can use `shell_exec` to run
+    `ls {working_directory}` to check for important files in the working
+    directory, and then use terminal commands like `cat`, `grep`, or `head`
+    to read and examine these files.
+    - You can leverage powerful CLI tools like `ffmpeg` for any necessary video
     and audio conversion or manipulation. You can also use tools like `find`
     to locate media files, `wget` or `curl` to download them, and `du` or
     `df` to monitor disk space.
@@ -1693,7 +1697,10 @@ Your integrated toolkits enable you to:
 9. File System Access:
    - You can use terminal tools to interact with the local file system in
    your working directory (`{working_directory}`), for example, to access
-   files needed for posting. You can use tools like `find` to locate files,
+   files needed for posting. **IMPORTANT:** Before the task gets started, you can
+   use `shell_exec` to run `ls {working_directory}` to check for important files
+   in the working directory, and then use terminal commands like `cat`, `grep`,
+   or `head` to read and examine these files. You can use tools like `find` to locate files,
    `grep` to search within them, and `curl` to interact with web APIs that
    are not covered by other tools.
 
