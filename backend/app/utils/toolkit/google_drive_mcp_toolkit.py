@@ -12,7 +12,7 @@
 # limitations under the License.
 # ========= Copyright 2025-2026 @ Eigent.ai All Rights Reserved. =========
 
-from camel.toolkits import GoogleDriveMCPToolkit as MCPToolkit
+from camel.toolkits import MCPToolkit as MCPToolkit
 from app.component.command import bun
 from app.service.task import Agents, get_task_lock_if_exists
 from app.utils.toolkit.abstract_toolkit import AbstractToolkit
