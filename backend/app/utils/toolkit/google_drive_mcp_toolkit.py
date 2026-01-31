@@ -12,14 +12,14 @@
 # limitations under the License.
 # ========= Copyright 2025-2026 @ Eigent.ai All Rights Reserved. =========
 
-from camel.toolkits import GoogleDriveMCPToolkit as BaseGoogleDriveMCPToolkit, MCPToolkit
+from camel.toolkits import GoogleDriveMCPToolkit as MCPToolkit
 from app.component.command import bun
 from app.service.task import Agents, get_task_lock_if_exists
 from app.utils.toolkit.abstract_toolkit import AbstractToolkit
 from camel.toolkits.function_tool import FunctionTool
 
 
-class GoogleDriveMCPToolkit(BaseGoogleDriveMCPToolkit, AbstractToolkit):
+class GoogleDriveMCPToolkit(MCPToolkit, AbstractToolkit):
     agent_name: str = Agents.document_agent
 
     def __init__(
@@ -31,23 +31,20 @@ class GoogleDriveMCPToolkit(BaseGoogleDriveMCPToolkit, AbstractToolkit):
         input_env: dict[str, str] | None = None,
     ) -> None:
         self.api_task_id = api_task_id
-        super().__init__(timeout, credentials_path)
-        self._mcp_toolkit = MCPToolkit(
-            config_dict={
-                "mcpServers": {
-                    "gdrive": {
-                        "command": bun(),
-                        "args": ["x", "-y", "@piotr-agier/google-drive-mcp"],
-                        "env": {
-                            "GOOGLE_DRIVE_OAUTH_CREDENTIALS": credentials_path or "",
-                            "GOOGLE_DRIVE_MCP_TOKEN_PATH": tokens_path or "",
-                            **(input_env or {}),
-                        },
-                    }
+        config_dict = {
+            "mcpServers": {
+                "gdrive": {
+                    "command": bun(),
+                    "args": ["x", "-y", "@piotr-agier/google-drive-mcp"],
+                    "env": {
+                        "GOOGLE_DRIVE_OAUTH_CREDENTIALS": credentials_path or "",
+                        "GOOGLE_DRIVE_MCP_TOKEN_PATH": tokens_path or "",
+                        **(input_env or {}),
+                    },
                 }
-            },
-            timeout=timeout,
-        )
+            }
+        }
+        super().__init__(config_dict=config_dict, timeout=timeout)
 
     @classmethod
     async def get_can_use_tools(cls, api_task_id: str, input_env: dict[str, str] | None = None) -> list[FunctionTool]:
@@ -65,9 +62,7 @@ class GoogleDriveMCPToolkit(BaseGoogleDriveMCPToolkit, AbstractToolkit):
         credentials_path = write_content_to_project(
             api_task_id, "google_drive", credentials_b64, filename_suffix="credentials.json"
         )
-        tokens_path = write_content_to_project(
-            api_task_id, "google_drive", tokens_b64, filename_suffix="tokens.json"
-        )
+        tokens_path = write_content_to_project(api_task_id, "google_drive", tokens_b64, filename_suffix="tokens.json")
         toolkit = cls(
             api_task_id,
             timeout=180,
