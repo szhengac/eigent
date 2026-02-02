@@ -322,6 +322,15 @@ def cleanup_file_save_path(api_task_id: str) -> None:
     try:
         shutil.rmtree(dir_path)
         logger.debug("Cleaned up file_save_path", extra={"project_id": api_task_id, "path": path})
+
+        # Remove parent dir if empty
+        parent_dir = dir_path.parent
+        if parent_dir.is_dir() and not any(parent_dir.iterdir()):
+            parent_dir.rmdir()
+            logger.debug(
+                "Removed empty parent directory",
+                extra={"project_id": api_task_id, "path": str(parent_dir)}
+            )
     except OSError as e:
         logger.warning("Failed to cleanup file_save_path %s: %s", path, e)
 
