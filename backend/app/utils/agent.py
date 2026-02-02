@@ -1021,6 +1021,7 @@ def browser_agent(options: Chat):
         options.project_id,
         headless=False,
         browser_log_to_file=True,
+        working_directory=working_directory,
         stealth=True,
         session_id=str(uuid.uuid4())[:8],
         default_start_url="about:blank",

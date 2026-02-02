@@ -29,6 +29,12 @@ import uuid
 logger = logging.getLogger("tool_controller")
 router = APIRouter()
 
+# Backend root (working directory) for browser_profiles and app cwd
+_backend_root = os.path.dirname(
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+)
+BROWSER_PROFILES_BASE = os.path.join(_backend_root, ".browser_profiles")
+
 
 class InstallToolBody(BaseModel):
     """Optional body for install; creds_params (e.g. google_calendar client_id/client_secret) for OAuth."""
@@ -313,8 +319,7 @@ async def open_browser_login():
         # IMPORTANT: Use dedicated profile for tool_controller browser
         # This is the SOURCE OF TRUTH for login data
         # On Eigent startup, this data will be copied to WebView partition (one-way sync)
-        browser_profiles_base = os.path.expanduser("~/.eigent/browser_profiles")
-        user_data_dir = os.path.join(browser_profiles_base, "profile_user_login")
+        user_data_dir = os.path.join(BROWSER_PROFILES_BASE, "profile_user_login")
 
         os.makedirs(user_data_dir, exist_ok=True)
 
@@ -354,9 +359,8 @@ async def open_browser_login():
             "https://www.google.com"
         ]
         
-        # Get the app's directory to run npx in the right context
-        app_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
-        
+        app_dir = _backend_root
+
         logger.info(f"[PROFILE USER LOGIN] Launching Electron browser with CDP on port {cdp_port}")
         logger.info(f"[PROFILE USER LOGIN] Working directory: {app_dir}")
         logger.info(f"[PROFILE USER LOGIN] userData path: {user_data_dir}")
@@ -421,8 +425,7 @@ async def list_cookie_domains(search: str = None):
     """
     try:
         # Use tool_controller browser's user data directory (source of truth)
-        user_data_base = os.path.expanduser("~/.eigent/browser_profiles")
-        user_data_dir = os.path.join(user_data_base, "profile_user_login")
+        user_data_dir = os.path.join(BROWSER_PROFILES_BASE, "profile_user_login")
 
         logger.info(f"[COOKIES CHECK] Tool controller user_data_dir: {user_data_dir}")
         logger.info(f"[COOKIES CHECK] Tool controller user_data_dir exists: {os.path.exists(user_data_dir)}")
@@ -493,8 +496,7 @@ async def get_domain_cookies(domain: str):
         cookies
     """
     try:
-        user_data_base = os.path.expanduser("~/.eigent/browser_profiles")
-        user_data_dir = os.path.join(user_data_base, "profile_user_login")
+        user_data_dir = os.path.join(BROWSER_PROFILES_BASE, "profile_user_login")
 
         if not os.path.exists(user_data_dir):
             raise HTTPException(
@@ -534,8 +536,7 @@ async def delete_domain_cookies(domain: str):
         deleted cookies
     """
     try:
-        user_data_base = os.path.expanduser("~/.eigent/browser_profiles")
-        user_data_dir = os.path.join(user_data_base, "profile_user_login")
+        user_data_dir = os.path.join(BROWSER_PROFILES_BASE, "profile_user_login")
 
         if not os.path.exists(user_data_dir):
             raise HTTPException(
@@ -576,8 +577,7 @@ async def delete_all_cookies():
         deleted cookies
     """
     try:
-        user_data_base = os.path.expanduser("~/.eigent/browser_profiles")
-        user_data_dir = os.path.join(user_data_base, "profile_user_login")
+        user_data_dir = os.path.join(BROWSER_PROFILES_BASE, "profile_user_login")
 
         if not os.path.exists(user_data_dir):
             raise HTTPException(

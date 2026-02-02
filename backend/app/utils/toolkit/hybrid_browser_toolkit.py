@@ -371,6 +371,7 @@ class HybridBrowserToolkit(BaseHybridBrowserToolkit, AbstractToolkit):
         *,
         headless: bool = False,
         user_data_dir: str | None = None,
+        working_directory: str | None = None,
         stealth: bool = True,
         cache_dir: Optional[str] = None,
         enabled_tools: List[str] | None = None,
@@ -397,9 +398,10 @@ class HybridBrowserToolkit(BaseHybridBrowserToolkit, AbstractToolkit):
         
         # Set default user_data_dir if not provided
         if user_data_dir is None:
-            # Use browser port to determine profile directory
+            # Use browser port to determine profile directory; base under working directory
             browser_port = env('browser_port', '9222')
-            user_data_base = os.path.expanduser("~/.eigent/browser_profiles")
+            base = working_directory if working_directory else os.path.expanduser("~/.eigent/browser_profiles")
+            user_data_base = os.path.join(base, ".browser_profiles")
             user_data_dir = os.path.join(user_data_base, f"profile_{browser_port}")
             os.makedirs(user_data_dir, exist_ok=True)
             logger.info(f"[HybridBrowserToolkit] Using port-based user_data_dir: {user_data_dir} (port: {browser_port})")
