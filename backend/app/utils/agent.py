@@ -1019,7 +1019,7 @@ def browser_agent(options: Chat):
 
     web_toolkit_custom = HybridBrowserToolkit(
         options.project_id,
-        headless=False,
+        headless=True,
         browser_log_to_file=True,
         working_directory=working_directory,
         stealth=True,
