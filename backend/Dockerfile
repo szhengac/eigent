@@ -17,7 +17,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     DBUS_SESSION_BUS_ADDRESS=/run/dbus/system_bus_socket \
     PATH="/root/.bun/bin:$PATH"
 
-WORKDIR /workspace
+WORKDIR /backend
 
 # -----------------------------
 # System dependencies
