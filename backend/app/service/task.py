@@ -13,7 +13,7 @@
 # ========= Copyright 2025-2026 @ Eigent.ai All Rights Reserved. =========
 
 from typing_extensions import Any, Literal, TypedDict
-from typing import List, Dict, Optional
+from typing import Dict, List, Optional, Union
 from pydantic import BaseModel
 from app.exception.exception import ProgramException
 from app.model.chat import AgentModelConfig, McpServers, Status, SupplementChat, Chat, UpdateData
@@ -151,8 +151,15 @@ class ActionActivateToolkitData(BaseModel):
 class ActionDeactivateToolkitData(BaseModel):
     action: Literal[Action.deactivate_toolkit] = Action.deactivate_toolkit
     data: dict[
-        Literal["agent_name", "toolkit_name", "process_task_id", "method_name", "message"],
-        str,
+        Literal[
+            "agent_name",
+            "toolkit_name",
+            "process_task_id",
+            "method_name",
+            "message",
+            "changed_files",
+        ],
+        Union[str, List[str], List[Dict[str, str]]],
     ]
 
 
@@ -346,8 +353,6 @@ class TaskLock:
     """Track if summary has been generated for this project"""
     current_task_id: Optional[str]
     """Current task ID to be used in SSE responses"""
-    extra_params: dict | None = None
-    """Extra parameters for the task"""
     creds_params: dict | None = None
     """Credentials and tokens for toolkits (from Chat.creds_params)"""
 

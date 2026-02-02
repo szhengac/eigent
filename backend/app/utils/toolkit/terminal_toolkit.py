@@ -71,12 +71,9 @@ class TerminalToolkit(BaseTerminalToolkit, AbstractToolkit):
         if agent_name is not None:
             self.agent_name = agent_name
 
-        # Server mode: do not depend on request-mutated env vars.
-        base_dir = env("EIGENT_TERMINAL_DIR", os.path.expanduser("~/.eigent/terminal/"))
-
         if working_directory is None:
-            working_directory = base_dir
-        self._agent_venv_dir = os.path.join(base_dir, self.agent_name)
+            working_directory = env("EIGENT_TERMINAL_DIR", os.path.expanduser("~/.eigent/terminal/"))
+        self._agent_venv_dir = os.path.join(working_directory, self.agent_name)
 
         logger.debug(f"Initializing TerminalToolkit for agent={self.agent_name}", extra={
             "api_task_id": api_task_id,

@@ -19,12 +19,17 @@ import json
 from typing import Any, Callable, Type, TypeVar
 import threading
 from concurrent.futures import ThreadPoolExecutor
+import time
 from datetime import datetime
 
 from app.service.task import (
     ActionActivateToolkitData,
     ActionDeactivateToolkitData,
     get_task_lock,
+)
+from app.utils.file_utils import (
+    get_changed_file_entries,
+    get_working_directory_from_task_lock,
 )
 from app.utils.toolkit.abstract_toolkit import AbstractToolkit
 from app.service.task import process_task
@@ -151,6 +156,7 @@ def listen_toolkit(
                         },
                     )
                     await task_lock.put_queue(activate_data)
+                tool_start_time = time.time()
                 error = None
                 res = None
                 try:
@@ -185,16 +191,23 @@ def listen_toolkit(
                 logger.info(f"[TOOLKIT DEACTIVATE] Toolkit: {toolkit_name} | Method: {method_name} | Task ID: {process_task_id} | Agent: {toolkit.agent_name} | Status: {status} | Timestamp: {deactivate_timestamp}")
 
                 if not skip_workflow_display:
-                    deactivate_data = ActionDeactivateToolkitData(
-                        data={
-                            "agent_name": toolkit.agent_name,
-                            "process_task_id": process_task_id,
-                            "toolkit_name": toolkit_name,
-                            "method_name": method_name,
-                            "message": res_msg,
-                        },
+                    deactivate_data = {
+                        "agent_name": toolkit.agent_name,
+                        "process_task_id": process_task_id,
+                        "toolkit_name": toolkit_name,
+                        "method_name": method_name,
+                        "message": res_msg,
+                    }
+                    working_dir = get_working_directory_from_task_lock(task_lock)
+                    if working_dir:
+                        changed_files = get_changed_file_entries(
+                            working_dir, since_timestamp=tool_start_time
+                        )
+                        if changed_files:
+                            deactivate_data["changed_files"] = changed_files
+                    await task_lock.put_queue(
+                        ActionDeactivateToolkitData(data=deactivate_data)
                     )
-                    await task_lock.put_queue(deactivate_data)
                 if error is not None:
                     raise error
                 return res
@@ -257,6 +270,7 @@ def listen_toolkit(
                     )
                     _safe_put_queue(task_lock, activate_data)
 
+                tool_start_time = time.time()
                 error = None
                 res = None
                 try:
@@ -292,16 +306,23 @@ def listen_toolkit(
                         res_msg = str(error)
 
                 if not skip_workflow_display:
-                    deactivate_data = ActionDeactivateToolkitData(
-                        data={
-                            "agent_name": toolkit.agent_name,
-                            "process_task_id": process_task_id,
-                            "toolkit_name": toolkit_name,
-                            "method_name": method_name,
-                            "message": res_msg,
-                        },
+                    deactivate_data = {
+                        "agent_name": toolkit.agent_name,
+                        "process_task_id": process_task_id,
+                        "toolkit_name": toolkit_name,
+                        "method_name": method_name,
+                        "message": res_msg,
+                    }
+                    working_dir = get_working_directory_from_task_lock(task_lock)
+                    if working_dir:
+                        changed_files = get_changed_file_entries(
+                            working_dir, since_timestamp=tool_start_time
+                        )
+                        if changed_files:
+                            deactivate_data["changed_files"] = changed_files
+                    _safe_put_queue(
+                        task_lock, ActionDeactivateToolkitData(data=deactivate_data)
                     )
-                    _safe_put_queue(task_lock, deactivate_data)
 
                 if error is not None:
                     raise error

@@ -17,6 +17,7 @@ import contextvars
 import json
 import os
 import platform
+import time
 from threading import Event, Lock
 import traceback
 from typing import Any, Callable, Dict, List, Tuple
@@ -97,7 +98,11 @@ from camel.terminators import ResponseTerminator
 from camel.toolkits import FunctionTool, RegisteredAgentToolkit
 from camel.types.agents import ToolCallingRecord
 from app.component.environment import env
-from app.utils.file_utils import get_working_directory
+from app.utils.file_utils import (
+    get_changed_file_entries,
+    get_working_directory,
+    get_working_directory_from_task_lock,
+)
 from app.utils.toolkit.abstract_toolkit import AbstractToolkit
 from app.utils.toolkit.hybrid_browser_toolkit import HybridBrowserToolkit
 from app.utils.toolkit.excel_toolkit import ExcelToolkit
@@ -439,6 +444,8 @@ class ListenChatAgent(ChatAgent):
                         )
                     )
                 )
+            # Record time before tool execution for changed-file detection (non-git dirs)
+            tool_start_time = time.time()
             # Set process_task context for all tool executions
             with set_process_task(self.process_task_id):
                 raw_result = tool(**args)
@@ -468,18 +475,22 @@ class ListenChatAgent(ChatAgent):
 
             # Only send deactivate event if tool is NOT wrapped by @listen_toolkit
             if not has_listen_decorator:
-                asyncio.create_task(
-                    task_lock.put_queue(
-                        ActionDeactivateToolkitData(
-                            data={
-                                "agent_name": self.agent_name,
-                                "process_task_id": self.process_task_id,
-                                "toolkit_name": toolkit_name,
-                                "method_name": func_name,
-                                "message": result_msg,
-                            },
-                        )
+                deactivate_data = {
+                    "agent_name": self.agent_name,
+                    "process_task_id": self.process_task_id,
+                    "toolkit_name": toolkit_name,
+                    "method_name": func_name,
+                    "message": result_msg,
+                }
+                working_dir = get_working_directory_from_task_lock(task_lock)
+                if working_dir:
+                    changed_files = get_changed_file_entries(
+                        working_dir, since_timestamp=tool_start_time
                     )
+                    if changed_files:
+                        deactivate_data["changed_files"] = changed_files
+                asyncio.create_task(
+                    task_lock.put_queue(ActionDeactivateToolkitData(data=deactivate_data))
                 )
         except Exception as e:
             # Capture the error message to prevent framework crash
@@ -551,6 +562,8 @@ class ListenChatAgent(ChatAgent):
                     },
                 )
             )
+        # Record time before tool execution for changed-file detection (non-git dirs)
+        tool_start_time = time.time()
         try:
             # Set process_task context for all tool executions
             with set_process_task(self.process_task_id):
@@ -607,17 +620,21 @@ class ListenChatAgent(ChatAgent):
 
         # Only send deactivate event if tool is NOT wrapped by @listen_toolkit
         if not has_listen_decorator:
-            await task_lock.put_queue(
-                ActionDeactivateToolkitData(
-                    data={
-                        "agent_name": self.agent_name,
-                        "process_task_id": self.process_task_id,
-                        "toolkit_name": toolkit_name,
-                        "method_name": func_name,
-                        "message": result_msg,
-                    },
+            deactivate_data = {
+                "agent_name": self.agent_name,
+                "process_task_id": self.process_task_id,
+                "toolkit_name": toolkit_name,
+                "method_name": func_name,
+                "message": result_msg,
+            }
+            working_dir = get_working_directory_from_task_lock(task_lock)
+            if working_dir:
+                changed_files = get_changed_file_entries(
+                    working_dir, since_timestamp=tool_start_time
                 )
-            )
+                if changed_files:
+                    deactivate_data["changed_files"] = changed_files
+            await task_lock.put_queue(ActionDeactivateToolkitData(data=deactivate_data))
         return self._record_tool_calling(
             func_name,
             args,
