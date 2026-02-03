@@ -12,6 +12,7 @@
 # limitations under the License.
 # ========= Copyright 2025-2026 @ Eigent.ai All Rights Reserved. =========
 
+import os
 from typing import Any, Dict, List, Literal
 from camel.toolkits import SearchToolkit as BaseSearchToolkit
 from camel.toolkits.function_tool import FunctionTool
@@ -86,9 +87,9 @@ class SearchToolkit(BaseSearchToolkit, AbstractToolkit):
     ) -> list[dict[str, Any]]:
         # Credentials only from Chat.creds_params["search"] (no env).
         params = self._get_search_params()
-        google_api_key = params.get("google_api_key") or params.get("GOOGLE_API_KEY")
-        search_engine_id = params.get("search_engine_id") or params.get("SEARCH_ENGINE_ID")
-        cloud_api_key = params.get("cloud_api_key")
+        google_api_key = params.get("google_api_key") or params.get("GOOGLE_API_KEY") or os.getenv("GOOGLE_API_KEY")
+        search_engine_id = params.get("search_engine_id") or params.get("SEARCH_ENGINE_ID") or os.getenv("SEARCH_ENGINE_ID")
+        cloud_api_key = params.get("cloud_api_key") or os.getenv("CLOUD_API_KEY")
 
         if google_api_key and search_engine_id:
             logger.info("Using Google Search API from extra_params")
@@ -370,7 +371,8 @@ class SearchToolkit(BaseSearchToolkit, AbstractToolkit):
             params.get("search_engine_id") or params.get("SEARCH_ENGINE_ID")
         )
         has_cloud = bool(params.get("cloud_api_key"))
-        if not (has_direct or has_cloud):
+        has_local_env = bool((os.getenv("GOOGLE_API_KEY") and os.getenv("SEARCH_ENGINE_ID")) or os.getenv("CLOUD_API_KEY"))
+        if not (has_direct or has_cloud or has_local_env):
             return []
         search_toolkit = SearchToolkit(api_task_id)
         return [FunctionTool(search_toolkit.search_google)]
