@@ -7,7 +7,7 @@ mkdir -p /run/dbus
 # Start system DBus daemon
 dbus-daemon --system --fork
 
-# Start headless Google Chrome
+# Start headless Google Chrome with extra flags to suppress GCM/deprecated endpoint errors
 google-chrome-stable \
     --headless=new \
     --disable-gpu \
@@ -17,6 +17,10 @@ google-chrome-stable \
     --disable-extensions \
     --disable-notifications \
     --disable-component-update \
+    --disable-background-networking \
+    --disable-sync \
+    --disable-translate \
+    --safebrowsing-disable-auto-update \
     --remote-debugging-address=127.0.0.1 \
     --remote-debugging-port=9222 &
 
