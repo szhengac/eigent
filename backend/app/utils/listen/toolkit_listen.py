@@ -37,6 +37,20 @@ import logging
 
 logger = logging.getLogger("toolkit_listen")
 
+# Params that may be passed by callers but should be dropped if not in the wrapped func's signature
+_MESSAGE_PARAMS = ("message_title", "message_description", "message_attachment")
+
+
+def _pop_message_params_if_not_in_signature(func, kwargs):
+    """Pop message_title, message_description, message_attachment from kwargs if not in func signature."""
+    try:
+        param_names = set(signature(func).parameters)
+    except (ValueError, TypeError):
+        return
+    for name in _MESSAGE_PARAMS:
+        if name in kwargs and name not in param_names:
+            kwargs.pop(name)
+
 
 def _safe_put_queue(task_lock, data):
     """Safely put data to the queue, handling both sync and async contexts"""
@@ -159,6 +173,7 @@ def listen_toolkit(
                         },
                     )
                     await task_lock.put_queue(activate_data)
+                _pop_message_params_if_not_in_signature(func, kwargs)
                 error = None
                 res = None
                 try:
@@ -274,6 +289,7 @@ def listen_toolkit(
                         },
                     )
                     _safe_put_queue(task_lock, activate_data)
+                _pop_message_params_if_not_in_signature(func, kwargs)
                 error = None
                 res = None
                 try:
