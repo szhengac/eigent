@@ -142,7 +142,7 @@ def get_changed_files(
             try:
                 if not os.path.isfile(full_path):
                     continue
-                if os.path.getmtime(full_path) >= since_timestamp:
+                if os.path.getmtime(full_path) >= since_timestamp - 0.1:
                     rel = os.path.relpath(full_path, working_dir_abs)
                     if not rel.startswith("..") and not _is_hidden_path(rel):
                         relative_paths.append(rel)

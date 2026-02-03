@@ -92,13 +92,13 @@ class SearchToolkit(BaseSearchToolkit, AbstractToolkit):
         cloud_api_key = params.get("cloud_api_key") or os.getenv("CLOUD_API_KEY")
 
         if google_api_key and search_engine_id:
-            logger.info("Using Google Search API from extra_params")
+            logger.info("Using Google Search API")
             return self._search_google_direct(
                 query, search_type, number_of_result_pages, start_page,
                 google_api_key, search_engine_id,
             )
         if cloud_api_key:
-            logger.info("Using cloud Google Search from extra_params")
+            logger.info("Using cloud Google Search")
             return self.cloud_search_google(query, search_type, number_of_result_pages, start_page)
         raise ValueError(
             "No search credentials. Include Chat.creds_params['search'] with "

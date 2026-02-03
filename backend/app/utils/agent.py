@@ -423,6 +423,8 @@ class ListenChatAgent(ChatAgent):
 
         try:
             task_lock = get_task_lock(self.api_task_id)
+            # Record time before tool execution for changed-file detection (non-git dirs)
+            tool_start_time = time.time()
 
             toolkit_name = getattr(tool, "_toolkit_name") if hasattr(tool, "_toolkit_name") else "mcp_toolkit"
             logger.debug(
@@ -444,8 +446,7 @@ class ListenChatAgent(ChatAgent):
                         )
                     )
                 )
-            # Record time before tool execution for changed-file detection (non-git dirs)
-            tool_start_time = time.time()
+
             # Set process_task context for all tool executions
             with set_process_task(self.process_task_id):
                 raw_result = tool(**args)
@@ -519,6 +520,8 @@ class ListenChatAgent(ChatAgent):
 
         # Try to get the real toolkit name
         toolkit_name = None
+        # Record time before tool execution for changed-file detection (non-git dirs)
+        tool_start_time = time.time()
 
         # Method 1: Check _toolkit_name attribute
         if hasattr(tool, "_toolkit_name"):
@@ -562,8 +565,7 @@ class ListenChatAgent(ChatAgent):
                     },
                 )
             )
-        # Record time before tool execution for changed-file detection (non-git dirs)
-        tool_start_time = time.time()
+
         try:
             # Set process_task context for all tool executions
             with set_process_task(self.process_task_id):

@@ -114,6 +114,9 @@ def listen_toolkit(
                     return await func(*args, **kwargs)
                     
                 task_lock = get_task_lock(toolkit.api_task_id)
+                # Record timestamp before any I/O or tool execution so files created
+                # during the call have mtime >= tool_start_time
+                tool_start_time = time.time()
 
                 if inputs is not None:
                     args_str = inputs(*args, **kwargs)
@@ -156,7 +159,6 @@ def listen_toolkit(
                         },
                     )
                     await task_lock.put_queue(activate_data)
-                tool_start_time = time.time()
                 error = None
                 res = None
                 try:
@@ -228,6 +230,9 @@ def listen_toolkit(
                     return func(*args, **kwargs)
 
                 task_lock = get_task_lock(toolkit.api_task_id)
+                # Record timestamp before any I/O or tool execution so files created
+                # during the call have mtime >= tool_start_time
+                tool_start_time = time.time()
 
                 if inputs is not None:
                     args_str = inputs(*args, **kwargs)
@@ -269,8 +274,6 @@ def listen_toolkit(
                         },
                     )
                     _safe_put_queue(task_lock, activate_data)
-
-                tool_start_time = time.time()
                 error = None
                 res = None
                 try:
