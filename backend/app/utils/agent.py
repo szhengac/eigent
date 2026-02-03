@@ -1069,7 +1069,6 @@ def browser_agent(options: Chat):
         search_tools = []
 
     tools = [
-        *HumanToolkit.get_can_use_tools(options.project_id, Agents.browser_agent),
         *web_toolkit_custom.get_tools(),
         *terminal_toolkit,
         *note_toolkit.get_tools(),
@@ -1149,7 +1148,6 @@ Your capabilities include:
     powerful CLI tools like `grep` for searching within files, `curl` and
     `wget` for downloading content, and `jq` for parsing JSON data from APIs.
 - Use the note-taking tools to record your findings.
-- Use the human toolkit to ask for help when you are stuck.
 </capabilities>
 
 <web_search_workflow>
@@ -1184,7 +1182,8 @@ Your approach depends on available search tools:
 - In your response, you should mention the URLs you have visited and processed.
 
 - When encountering verification challenges (like login, CAPTCHAs or
-    robot checks), you MUST request help using the human toolkit.
+    robot checks), you MUST attempt to handle them automatically.
+    If automatic handling fails, you SHOULD skip the challenge.
 </web_search_workflow>
     """
 
