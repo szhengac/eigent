@@ -14,7 +14,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /backend
 
 # -----------------------------
-# System dependencies including DBus
+# System dependencies
 # -----------------------------
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
@@ -23,9 +23,7 @@ RUN apt-get update && \
       git \
       curl \
       unzip \
-      chromium \
-      chromium-driver \
-      dbus \
+      wget \
       fonts-liberation \
       fonts-dejavu-core \
       libasound2 \
@@ -48,11 +46,20 @@ RUN apt-get update && \
       libpango-1.0-0 \
       libcairo2 \
       xdg-utils \
-      ca-certificates && \
+      ca-certificates \
+      dbus && \
+    mkdir -p /run/dbus && \
     rm -rf /var/lib/apt/lists/*
 
 # -----------------------------
-# Install Bun (for Camel MCP)
+# Install Google Chrome stable
+# -----------------------------
+RUN wget -qO /tmp/google-chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
+    apt-get update && apt-get install -y --no-install-recommends /tmp/google-chrome.deb && \
+    rm -rf /tmp/google-chrome.deb /var/lib/apt/lists/*
+
+# -----------------------------
+# Install Bun (required by Camel MCP)
 # -----------------------------
 RUN curl -fsSL https://bun.sh/install | bash
 
@@ -62,31 +69,31 @@ RUN curl -fsSL https://bun.sh/install | bash
 COPY . .
 
 # -----------------------------
-# Python dependencies
+# Upgrade pip safely and install Python dependencies
 # -----------------------------
-RUN pip3 install --no-cache-dir --upgrade pip && \
-    pip3 install --no-cache-dir \
-      pip>=23.0 \
-      fastapi>=0.115.12 \
-      fastapi-babel>=1.0.0 \
-      uvicorn[standard]>=0.34.2 \
-      uvloop>=0.17.0 \
-      pydantic-i18n>=0.4.5 \
-      python-dotenv>=1.1.0 \
-      httpx[socks]>=0.28.1 \
-      pydash>=8.0.5 \
-      inflection>=0.5.1 \
-      aiofiles>=24.1.0 \
-      openai>=1.99.3,<2 \
-      nodejs-wheel>=22.18.0 \
-      numpy>=1.23.0,<2.0.0 \
-      debugpy>=1.8.17 \
-      opentelemetry-api>=1.34.1 \
-      opentelemetry-sdk>=1.34.1 \
-      opentelemetry-exporter-otlp-proto-http>=1.34.1 \
-      google-genai==1.60.0 && \
-    pip3 install --no-cache-dir \
-      "camel-ai[eigent] @ git+https://github.com/szhengac/camel.git@gemini"
+RUN python3 -m pip install --upgrade pip
+
+RUN python3 -m pip install --no-cache-dir \
+    "pip>=23.0" \
+    "fastapi>=0.115.12" \
+    "fastapi-babel>=1.0.0" \
+    "uvicorn[standard]>=0.34.2" \
+    "uvloop>=0.17.0" \
+    "pydantic-i18n>=0.4.5" \
+    "python-dotenv>=1.1.0" \
+    "httpx[socks]>=0.28.1" \
+    "pydash>=8.0.5" \
+    "inflection>=0.5.1" \
+    "aiofiles>=24.1.0" \
+    "openai>=1.99.3,<2" \
+    "nodejs-wheel>=22.18.0" \
+    "numpy>=1.23.0,<2.0.0" \
+    "debugpy>=1.8.17" \
+    "opentelemetry-api>=1.34.1" \
+    "opentelemetry-sdk>=1.34.1" \
+    "opentelemetry-exporter-otlp-proto-http>=1.34.1" \
+    "google-genai==1.60.0" \
+    "camel-ai[eigent] @ git+https://github.com/szhengac/camel.git@gemini"
 
 # -----------------------------
 # Expose FastAPI port only
@@ -94,7 +101,7 @@ RUN pip3 install --no-cache-dir --upgrade pip && \
 EXPOSE 5002
 
 # -----------------------------
-# Entrypoint script
+# Entrypoint
 # -----------------------------
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
