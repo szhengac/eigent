@@ -26,7 +26,6 @@ RUN apt-get update && \
       chromium-driver \
       fonts-liberation \
       fonts-dejavu-core \
-      ttf-ubuntu-font-family \
       libasound2 \
       libatk-bridge2.0-0 \
       libatk1.0-0 \
