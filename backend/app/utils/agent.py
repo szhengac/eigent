@@ -1037,12 +1037,15 @@ def browser_agent(options: Chat):
             "browser_console_exec",
             "browser_console_view",
             "browser_switch_tab",
+            "browser_get_tab_info",
+            "browser_close_tab",
             "browser_enter",
             "browser_visit_page",
             "browser_scroll",
             "browser_sheet_read",
             "browser_sheet_input",
             "browser_get_page_snapshot",
+            "browser_solve_task",
         ],
     )
 
