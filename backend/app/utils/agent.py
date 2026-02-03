@@ -1216,6 +1216,7 @@ async def document_agent(options: Chat):
         message_handler=HumanToolkit(options.project_id, Agents.task_agent).send_message_to_user
     )
     file_write_toolkit = FileToolkit(options.project_id, working_directory=working_directory)
+    file_write_toolkit = message_integration.register_toolkits(file_write_toolkit)
     pptx_toolkit = PPTXToolkit(options.project_id, working_directory=working_directory)
     pptx_toolkit = message_integration.register_toolkits(pptx_toolkit)
     mark_it_down_toolkit = MarkItDownToolkit(options.project_id)
