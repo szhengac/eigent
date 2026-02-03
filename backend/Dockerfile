@@ -1,4 +1,4 @@
-FROM python:3.10-slim
+FROM ubuntu:22.04
 
 # -----------------------------
 # Environment variables
@@ -14,16 +14,18 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /backend
 
 # -----------------------------
-# System dependencies
+# System dependencies including DBus
 # -----------------------------
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
+      python3.10 python3-pip python3-venv \
       build-essential \
       git \
       curl \
       unzip \
       chromium \
       chromium-driver \
+      dbus \
       fonts-liberation \
       fonts-dejavu-core \
       libasound2 \
@@ -45,13 +47,12 @@ RUN apt-get update && \
       libxinerama1 \
       libpango-1.0-0 \
       libcairo2 \
-      dbus \
       xdg-utils \
       ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
 # -----------------------------
-# Install Bun (required by Camel MCP)
+# Install Bun (for Camel MCP)
 # -----------------------------
 RUN curl -fsSL https://bun.sh/install | bash
 
@@ -61,25 +62,41 @@ RUN curl -fsSL https://bun.sh/install | bash
 COPY . .
 
 # -----------------------------
-# Install Python dependencies
+# Python dependencies
 # -----------------------------
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir \
-      fastapi uvicorn[standard] httpx aiofiles numpy debugpy \
+RUN pip3 install --no-cache-dir --upgrade pip && \
+    pip3 install --no-cache-dir \
+      pip>=23.0 \
+      fastapi>=0.115.12 \
+      fastapi-babel>=1.0.0 \
+      uvicorn[standard]>=0.34.2 \
+      uvloop>=0.17.0 \
+      pydantic-i18n>=0.4.5 \
+      python-dotenv>=1.1.0 \
+      httpx[socks]>=0.28.1 \
+      pydash>=8.0.5 \
+      inflection>=0.5.1 \
+      aiofiles>=24.1.0 \
+      openai>=1.99.3,<2 \
+      nodejs-wheel>=22.18.0 \
+      numpy>=1.23.0,<2.0.0 \
+      debugpy>=1.8.17 \
+      opentelemetry-api>=1.34.1 \
+      opentelemetry-sdk>=1.34.1 \
+      opentelemetry-exporter-otlp-proto-http>=1.34.1 \
+      google-genai==1.60.0 && \
+    pip3 install --no-cache-dir \
       "camel-ai[eigent] @ git+https://github.com/szhengac/camel.git@gemini"
 
 # -----------------------------
-# Expose ports
+# Expose FastAPI port only
 # -----------------------------
 EXPOSE 5002
 
 # -----------------------------
-# Copy entrypoint script
+# Entrypoint script
 # -----------------------------
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# -----------------------------
-# Use entrypoint
-# -----------------------------
 CMD ["/entrypoint.sh"]
