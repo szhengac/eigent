@@ -884,9 +884,15 @@ The current date is {NOW_STR}(Accurate to the hour). For any date-related tasks,
 </operating_environment>
 
 <mandatory_instructions>
-- You MUST use the `read_note` tool to read the ALL notes from other agents.
+- You MUST use `list_note()` to discover available notes, then use
+    `read_note()` to read ALL notes from other agents. Check the
+    `shared_files` note for files created by other agents that you may
+    need to use or build upon.
 
-You SHOULD keep the user informed by providing message_title and message_description
+- After creating any file (script, application, output), you MUST register
+    it: `append_note("shared_files", "- <path>: <description>")
+
+- You SHOULD keep the user informed by providing message_title and message_description
     parameters when calling tools. These optional parameters are available on all tools
     and will automatically notify the user of your progress.
 
@@ -1104,6 +1110,11 @@ The current date is {NOW_STR}(Accurate to the hour). For any date-related tasks,
 </operating_environment>
 
 <mandatory_instructions>
+- Before starting research, you MUST use `list_note()` to discover notes
+    left by other agents, then use `read_note()` to review existing
+    information and avoid duplicating research. Check the `shared_files`
+    note for files created by other agents that may inform your research.
+
 - You MUST use the note-taking tools to record your findings. This is a
     critical part of your role. Your notes are the primary source of
     information for your teammates. To avoid information loss, you must not
@@ -1280,8 +1291,13 @@ The current date is {NOW_STR}(Accurate to the hour). For any date-related tasks,
 </operating_environment>
 
 <mandatory_instructions>
-- Before creating any document, you MUST use the `read_note` tool to gather
-    all information collected by other team members by reading ALL notes.
+- Before creating any document, you MUST use `list_note()` to discover
+    available notes, then use `read_note()` to gather all information
+    collected by other team members. Check the `shared_files` note for
+    files created by other agents that you may need to embed or reference.
+
+- After creating any document or file, you MUST register it:
+    `append_note("shared_files", "- <path>: <description>")`
 
 - You MUST use the available tools to create or modify documents (e.g.,
     `write_to_file`, `create_presentation`). Your primary output should be
@@ -1538,9 +1554,13 @@ The current date is {NOW_STR}(Accurate to the hour). For any date-related tasks,
 </operating_environment>
 
 <mandatory_instructions>
-- You MUST use the `read_note` tool to to gather all information collected
-    by other team members by reading ALL notes and write down your findings in
-    the notes.
+- You MUST use `list_note()` to discover available notes, then use
+    `read_note()` to gather all information collected by other team members.
+    Check the `shared_files` note for files created by other agents that
+    you may need. Write down your own findings using `append_note()`.
+
+- After creating any file (image, audio, video), you MUST register it:
+    `append_note("shared_files", "- <path>: <description>")`
 
 - When you complete your task, your final response must be a comprehensive
     summary of your analysis or the generated media, presented in a clear,
@@ -1725,6 +1745,14 @@ Your integrated toolkits enable you to:
    or `head` to read and examine these files. You can use tools like `find` to locate files,
    `grep` to search within them, and `curl` to interact with web APIs that
    are not covered by other tools.
+
+10. Note-Taking & Cross-Agent Collaboration (NoteTakingToolkit):
+   - Discover existing notes from other agents with `list_note()`.
+   - Read note content with `read_note()`.
+   - Record your findings and share information with `append_note()`.
+   - Check the `shared_files` note for files created by other agents.
+   - After creating or uploading any file, register it with:
+   `append_note("shared_files", "- <path>: <description>")`
 
 When assisting users, always:
 - Identify which platform's functionality is needed for the task.
