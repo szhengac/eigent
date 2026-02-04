@@ -13,6 +13,7 @@
 # ========= Copyright 2025-2026 @ Eigent.ai All Rights Reserved. =========
 
 import asyncio
+import base64
 import os
 import time
 from pathlib import Path
@@ -142,6 +143,24 @@ async def post(data: Chat, request: Request):
 
     # Copy Chat.creds_params onto task_lock for toolkits
     task_lock.creds_params = data.creds_params or {}
+
+    # Save attached files (name + base64) to working directory
+    attached_file_paths: list[str] = []
+    if data.attaches:
+        task_root = Path(task_lock.file_save_path)
+        for attach in data.attaches:
+            name = attach.get("name") or attach.get("filename")
+            b64 = attach.get("base64") or attach.get("content")
+            if name and b64:
+                try:
+                    content = base64.b64decode(b64)
+                    safe_name = Path(name).name  # avoid path traversal
+                    file_path = task_root / safe_name
+                    file_path.write_bytes(content)
+                    attached_file_paths.append(str(file_path))
+                except Exception as e:
+                    chat_logger.warning(f"Failed to save attachment {name}: {e}")
+    task_lock.attached_file_paths = attached_file_paths
 
     # Set the initial current_task_id in task_lock
     set_current_task_id(data.project_id, data.task_id)

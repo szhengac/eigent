@@ -1843,7 +1843,6 @@ async def mcp_agent(options: Chat):
                 if k not in ["model_platform", "model_type", "api_key", "url"]
             },
         ),
-        # output_language=options.language,
         tools=tools,
         agent_id=agent_id,
     )

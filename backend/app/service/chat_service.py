@@ -351,7 +351,8 @@ async def step_solve(options: Chat, request: Request, task_lock: TaskLock):
 
                 # Determine task complexity: attachments mean workforce, otherwise let agent decide
                 is_complex_task: bool
-                if len(options.attaches) > 0:
+                attached_paths = getattr(task_lock, "attached_file_paths", None) or []
+                if len(attached_paths) > 0:
                     is_complex_task = True
                     logger.info(f"[NEW-QUESTION] Has attachments, treating as complex task")
                 else:
@@ -419,8 +420,8 @@ async def step_solve(options: Chat, request: Request, task_lock: TaskLock):
                     # Create camel_task for the question
                     clean_task_content = question + options.summary_prompt
                     camel_task = Task(content=clean_task_content, id=options.task_id)
-                    if len(options.attaches) > 0:
-                        camel_task.additional_info = {Path(file_path).name: file_path for file_path in options.attaches}
+                    if len(attached_paths) > 0:
+                        camel_task.additional_info = {Path(p).name: p for p in attached_paths}
 
                     # Stream decomposition in background
                     stream_state = {"subtasks": [], "seen_ids": set(), "last_content": ""}

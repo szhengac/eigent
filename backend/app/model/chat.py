@@ -15,7 +15,7 @@
 from enum import Enum
 import json
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Dict
 from pydantic import BaseModel, Field, field_validator
 from camel.types import ModelType, RoleType
 import logging
@@ -57,16 +57,14 @@ class Chat(BaseModel):
     task_id: str
     project_id: str
     question: str
-    email: str
-    attaches: list[str] = []
+    # Each item: {"name": filename, "base64": base64_content}
+    attaches: list[Dict[str, str]] = []
     model_platform: str
     model_type: str
     api_key: str
     api_url: str | None = None  # for cloud version, user don't need to set api_url
-    language: str = "en"
     browser_port: int = 9222
     max_retries: int = 3
-    allow_local_system: bool = False
     installed_mcp: McpServers = {"mcpServers": {}}
     bun_mirror: str = ""
     uvx_mirror: str = ""
