@@ -19,7 +19,7 @@ from typing import Optional
 
 from app.component.environment import env
 from app.service.task import Agents
-from app.utils.listen.toolkit_listen import auto_listen_toolkit
+from app.utils.listen.toolkit_listen import auto_listen_toolkit, listen_toolkit
 from app.utils.toolkit.abstract_toolkit import AbstractToolkit
 
 
@@ -39,5 +39,15 @@ class NoteTakingToolkit(BaseNoteTakingToolkit, AbstractToolkit):
             self.agent_name = agent_name
         if working_directory is None:
             base = env("EIGENT_DATA_DIR", os.path.expanduser("~/.eigent/server_data"))
-            working_directory = os.path.join(base, "notes", "note.md")
+            working_directory = os.path.join(base, "notes")
         super().__init__(working_directory=working_directory, timeout=timeout)
+
+    # A hacky workaround to allow reading notes with the .md suffix
+    @listen_toolkit(
+        BaseNoteTakingToolkit.read_note,
+        lambda _, note_name: f"read note {note_name.removesuffix('.md') if note_name else note_name}",
+    )
+    def read_note(self, note_name: Optional[str] = "all_notes") -> str:
+        if note_name is not None:
+            note_name = note_name.removesuffix(".md")
+        return super().read_note(note_name)

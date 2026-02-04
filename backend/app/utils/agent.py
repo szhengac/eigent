@@ -887,7 +887,7 @@ The current date is {NOW_STR}(Accurate to the hour). For any date-related tasks,
 - You MUST use `list_note()` to discover available notes, then use
     `read_note()` to read ALL notes from other agents. Check the
     `shared_files` note for files created by other agents that you may
-    need to use or build upon.
+    need to use or build upon. Important: note_name (str) refers to the name of the note without the .md extension.
 
 - After creating any file (script, application, output), you MUST register
     it: `append_note("shared_files", "- <path>: <description>")
@@ -1114,6 +1114,7 @@ The current date is {NOW_STR}(Accurate to the hour). For any date-related tasks,
     left by other agents, then use `read_note()` to review existing
     information and avoid duplicating research. Check the `shared_files`
     note for files created by other agents that may inform your research.
+    Important: note_name (str) refers to the name of the note without the .md extension.
 
 - You MUST use the note-taking tools to record your findings. This is a
     critical part of your role. Your notes are the primary source of
@@ -1295,6 +1296,7 @@ The current date is {NOW_STR}(Accurate to the hour). For any date-related tasks,
     available notes, then use `read_note()` to gather all information
     collected by other team members. Check the `shared_files` note for
     files created by other agents that you may need to embed or reference.
+    Important: note_name (str) refers to the name of the note without the .md extension.
 
 - After creating any document or file, you MUST register it:
     `append_note("shared_files", "- <path>: <description>")`
@@ -1558,6 +1560,7 @@ The current date is {NOW_STR}(Accurate to the hour). For any date-related tasks,
     `read_note()` to gather all information collected by other team members.
     Check the `shared_files` note for files created by other agents that
     you may need. Write down your own findings using `append_note()`.
+    Important: note_name (str) refers to the name of the note without the .md extension.
 
 - After creating any file (image, audio, video), you MUST register it:
     `append_note("shared_files", "- <path>: <description>")`
@@ -1748,11 +1751,12 @@ Your integrated toolkits enable you to:
 
 10. Note-Taking & Cross-Agent Collaboration (NoteTakingToolkit):
    - Discover existing notes from other agents with `list_note()`.
-   - Read note content with `read_note()`.
+   - Read note content with `read_note()`. 
    - Record your findings and share information with `append_note()`.
    - Check the `shared_files` note for files created by other agents.
    - After creating or uploading any file, register it with:
    `append_note("shared_files", "- <path>: <description>")`
+   - Important: note_name (str) refers to the name of the note without the .md extension.
 
 When assisting users, always:
 - Identify which platform's functionality is needed for the task.
