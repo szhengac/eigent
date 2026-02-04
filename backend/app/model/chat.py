@@ -57,6 +57,7 @@ class Chat(BaseModel):
     task_id: str
     project_id: str
     question: str
+    email: str
     # Each item: {"name": filename, "base64": base64_content}
     attaches: list[Dict[str, str]] = []
     model_platform: str
