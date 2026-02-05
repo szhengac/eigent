@@ -1068,7 +1068,7 @@ async def install_mcp(
 ):
     logger.info(f"Installing MCP tools: {list(install_mcp.data.get('mcpServers', {}).keys())}")
     try:
-        mcp.add_tools(await get_mcp_tools(install_mcp.data))
+        mcp.add_tools(await get_mcp_tools(mcp.api_task_id, install_mcp.data))
         logger.info("MCP tools installed successfully")
     except Exception as e:
         logger.error(f"Error installing MCP tools: {e}", exc_info=True)
@@ -1513,7 +1513,7 @@ async def new_agent_model(data: NewAgent | ActionNewAgent, options: Chat):
     tools.extend(terminal_toolkit.get_tools())
     tool_names.append(titleize("terminal_toolkit"))
     if data.mcp_tools is not None:
-        tools = [*tools, *await get_mcp_tools(data.mcp_tools)]
+        tools = [*tools, *await get_mcp_tools(options.project_id, data.mcp_tools)]
         for item in data.mcp_tools["mcpServers"].keys():
             tool_names.append(titleize(item))
     for item in tools:
