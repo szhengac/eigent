@@ -1918,7 +1918,14 @@ async def get_mcp_tools(api_task_id: str, mcp_server: McpServers):
         return tools
     except asyncio.CancelledError:
         logger.info("MCP connection cancelled during get_mcp_tools")
-        return []
+        # IMPORTANT: re-raise cancellation so uvicorn/anyio can finish cleanup
+        raise
+
     except Exception as e:
+        # If we're already cancelled, ignore Camel's synthetic error
+        if asyncio.current_task() and asyncio.current_task().cancelled():
+            logger.info("Task cancelled; suppressing MCP connection error")
+            raise asyncio.CancelledError
+
         logger.error(f"Failed to connect MCP toolkit: {e}", exc_info=True)
         return []
