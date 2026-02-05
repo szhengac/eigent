@@ -40,5 +40,5 @@ until curl -sf http://127.0.0.1:9222/json/version >/dev/null; do
 done
 echo "Chrome CDP ready"
 
-# Start FastAPI
-exec uvicorn main:api --host 0.0.0.0 --port 5002
+# Start FastAPI (Python 3.12 for asyncio.TaskGroup support)
+exec python3.12 -m uvicorn main:api --host 0.0.0.0 --port 5002

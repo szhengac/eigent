@@ -13,8 +13,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /backend
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 # -----------------------------
-# System dependencies
+# System dependencies (Python 3.12+ required for asyncio.TaskGroup)
 # -----------------------------
 RUN apt-get update && \
     apt-get install -y --no-install-recommends software-properties-common && \
@@ -72,11 +74,11 @@ RUN curl -fsSL https://bun.sh/install | bash
 COPY . .
 
 # -----------------------------
-# Upgrade pip safely and install Python dependencies
+# Upgrade pip safely and install Python dependencies (Python 3.12)
 # -----------------------------
-RUN python3 -m pip install --upgrade pip
+RUN python3.12 -m ensurepip --upgrade && python3.12 -m pip install --upgrade pip
 
-RUN python3 -m pip install --no-cache-dir \
+RUN python3.12 -m pip install --no-cache-dir \
     "pip>=23.0" \
     "fastapi>=0.115.12" \
     "fastapi-babel>=1.0.0" \
