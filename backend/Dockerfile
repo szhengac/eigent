@@ -57,6 +57,12 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # -----------------------------
+# Make python / python3 default to 3.12
+# -----------------------------
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.12 100 && \
+    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 100
+
+# -----------------------------
 # Install Google Chrome stable
 # -----------------------------
 RUN wget -qO /tmp/google-chrome.deb https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb && \
