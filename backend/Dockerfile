@@ -17,8 +17,11 @@ WORKDIR /backend
 # System dependencies
 # -----------------------------
 RUN apt-get update && \
+    apt-get install -y --no-install-recommends software-properties-common && \
+    add-apt-repository -y ppa:deadsnakes/ppa && \
+    apt-get update && \
     apt-get install -y --no-install-recommends \
-      python3.10 python3-pip python3-venv \
+      python3.12 python3.12-venv python3.12-dev \
       build-essential \
       git \
       curl \

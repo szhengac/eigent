@@ -1363,16 +1363,28 @@ The current date is {datetime.date.today()}. For any date-related tasks, you MUS
     # ========================================================================
 
     try:
-        # asyncio.gather runs all coroutines concurrently
+        # asyncio.TaskGroup runs all tasks concurrently; if one fails, others are cancelled (requires Python 3.11+)
         # asyncio.to_thread runs sync functions in thread pool without blocking event loop
-        results = await asyncio.gather(
-            asyncio.to_thread(_create_coordinator_and_task_agents),
-            asyncio.to_thread(_create_new_worker_agent),
-            asyncio.to_thread(browser_agent, options),
-            developer_agent(options),
-            document_agent(options),
-            asyncio.to_thread(multi_modal_agent, options),
-            mcp_agent(options),
+        async with asyncio.TaskGroup() as tg:
+            t_coord_task = tg.create_task(
+                asyncio.to_thread(_create_coordinator_and_task_agents)
+            )
+            t_new_worker = tg.create_task(asyncio.to_thread(_create_new_worker_agent))
+            t_browser = tg.create_task(asyncio.to_thread(browser_agent, options))
+            t_developer = tg.create_task(developer_agent(options))
+            t_document = tg.create_task(document_agent(options))
+            t_multi_modal = tg.create_task(
+                asyncio.to_thread(multi_modal_agent, options)
+            )
+            t_mcp = tg.create_task(mcp_agent(options))
+        results = (
+            t_coord_task.result(),
+            t_new_worker.result(),
+            t_browser.result(),
+            t_developer.result(),
+            t_document.result(),
+            t_multi_modal.result(),
+            t_mcp.result(),
         )
     except Exception as e:
         logger.error(f"Failed to create agents in parallel: {e}", exc_info=True)
