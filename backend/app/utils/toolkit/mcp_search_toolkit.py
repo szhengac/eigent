@@ -16,7 +16,6 @@ from typing import Any, List
 from camel.toolkits import BaseToolkit, FunctionTool
 import httpx
 from app.service.task import Action, ActionSearchMcpData, Agents, get_task_lock
-from app.component.environment import env_not_empty
 from app.utils.listen.toolkit_listen import listen_toolkit
 from app.utils.toolkit.abstract_toolkit import AbstractToolkit
 
@@ -39,25 +38,22 @@ class McpSearchToolkit(BaseToolkit, AbstractToolkit):
         self,
         keyword: str,
         size: int = 15,
-        page: int = 0,
     ) -> dict[str, Any]:
         """Search mcp server for keyword.
 
         Args:
-            keyword (str): mcp server name keyword.
-            size (int): count per page.
-            page (int): page.
+            keyword (str): Search query used to match MCP server names and metadata.
+            size (int): Maximum number of results to return.
 
         Returns:
             dict[str, Any]: _description_
         """
         async with httpx.AsyncClient() as client:
             response = await client.get(
-                env_not_empty("MCP_URL"),
+                "https://mcp-registry-search.vercel.app/search",
                 params={
-                    "keyword": keyword,
-                    "size": size,
-                    "page": page,
+                    "q": keyword,
+                    "limit": size,
                 },
             )
             if response.status_code != 200:
@@ -65,7 +61,7 @@ class McpSearchToolkit(BaseToolkit, AbstractToolkit):
             data = response.json()
             task_lock = get_task_lock(self.api_task_id)
             await task_lock.put_queue(
-                ActionSearchMcpData(action=Action.search_mcp, data=data["items"])
+                ActionSearchMcpData(action=Action.search_mcp, data=data["results"])
             )
             return data
 
