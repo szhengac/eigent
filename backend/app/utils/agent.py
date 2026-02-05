@@ -132,6 +132,7 @@ from app.utils.toolkit.linkedin_toolkit import LinkedInToolkit
 from app.utils.toolkit.reddit_toolkit import RedditToolkit
 from app.utils.toolkit.slack_toolkit import SlackToolkit
 from app.utils.toolkit.lark_toolkit import LarkToolkit
+from app.utils.extra_params_config import _get_project_save_path
 from camel.types import ModelPlatformType, ModelType
 from camel.toolkits import MCPToolkit, ToolkitMessageIntegration
 import datetime
@@ -1794,7 +1795,7 @@ async def mcp_agent(options: Chat):
     ]
     if len(options.installed_mcp["mcpServers"]) > 0:
         try:
-            mcp_tools = await get_mcp_tools(options.installed_mcp)
+            mcp_tools = await get_mcp_tools(options.project_id, options.installed_mcp)
             logger.info(f"Retrieved {len(mcp_tools)} MCP tools for task {options.project_id}")
             if mcp_tools:
                 tool_names = [
@@ -1887,7 +1888,7 @@ async def get_toolkits(tools: list[str], agent_name: str, api_task_id: str):
     return res
 
 
-async def get_mcp_tools(mcp_server: McpServers):
+async def get_mcp_tools(api_task_id: str, mcp_server: McpServers):
     logger.info(f"Getting MCP tools for {len(mcp_server['mcpServers'])} servers")
     if len(mcp_server["mcpServers"]) == 0:
         return []
@@ -1899,8 +1900,9 @@ async def get_mcp_tools(mcp_server: McpServers):
             server_config["env"] = {}
         # Set global auth directory to persist authentication across tasks
         if "MCP_REMOTE_CONFIG_DIR" not in server_config["env"]:
+            mcp_remote_config_dir = _get_project_save_path(api_task_id)
             server_config["env"]["MCP_REMOTE_CONFIG_DIR"] = env(
-                "MCP_REMOTE_CONFIG_DIR", os.path.expanduser("~/.mcp-auth")
+                "MCP_REMOTE_CONFIG_DIR", mcp_remote_config_dir
             )
 
     mcp_toolkit = None
