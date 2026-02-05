@@ -1900,7 +1900,7 @@ async def get_mcp_tools(api_task_id: str, mcp_server: McpServers):
             server_config["env"] = {}
         # Set global auth directory to persist authentication across tasks
         if "MCP_REMOTE_CONFIG_DIR" not in server_config["env"]:
-            mcp_remote_config_dir = _get_project_save_path(api_task_id)
+            mcp_remote_config_dir = str(_get_project_save_path(api_task_id))
             server_config["env"]["MCP_REMOTE_CONFIG_DIR"] = env(
                 "MCP_REMOTE_CONFIG_DIR", mcp_remote_config_dir
             )
