@@ -1905,9 +1905,10 @@ async def get_mcp_tools(api_task_id: str, mcp_server: McpServers):
                 "MCP_REMOTE_CONFIG_DIR", mcp_remote_config_dir
             )
 
-    mcp_toolkit = None
+    mcp_toolkit_cm = MCPToolkit(config_dict=config_dict, timeout=180)
     try:
-        async with asyncio.shield(MCPToolkit(config_dict=config_dict, timeout=180)) as mcp_toolkit:
+        mcp_toolkit = await asyncio.shield(mcp_toolkit_cm.__aenter__())
+        try:
             logger.info(f"Successfully connected to MCP toolkit with {len(mcp_server['mcpServers'])} servers")
             tools = mcp_toolkit.get_tools()
             if tools:
@@ -1915,10 +1916,14 @@ async def get_mcp_tools(api_task_id: str, mcp_server: McpServers):
                     (tool.get_function_name() if hasattr(tool, "get_function_name") else str(tool)) for tool in tools
                 ]
                 logging.debug(f"MCP tool names: {tool_names}")
-        return tools
+            return tools
+        finally:
+            await mcp_toolkit_cm.__aexit__(None, None, None)
+    
     except asyncio.CancelledError:
         logger.info("MCP connection cancelled during get_mcp_tools")
         return []
+    
     except Exception as e:
         logger.error(f"Failed to connect MCP toolkit: {e}", exc_info=True)
         return []
