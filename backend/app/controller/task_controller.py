@@ -16,6 +16,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException, Response
 from pydantic import BaseModel
 from app.model.chat import NewAgent, UpdateData
+from app.exception.exception import ProgramException
 from app.service.task import (
     Action,
     ActionNewAgent,
@@ -39,7 +40,7 @@ router = APIRouter()
 def start(id: str):
     try:
         task_lock = get_task_lock(id)
-    except KeyError:  # assuming get_task_lock raises KeyError if id not found
+    except ProgramException:  # assuming get_task_lock raises ProgramException if id not found
         logger.warning("Task not found", extra={"task_id": id})
         raise HTTPException(status_code=404, detail=f"Task {id} not found")
     logger.info("Starting task", extra={"task_id": id})
@@ -54,7 +55,7 @@ def put(id: str, data: UpdateData):
     logger.debug("Update task data", extra={"task_id": id, "data": data.model_dump_json()})
     try:
         task_lock = get_task_lock(id)
-    except KeyError:  # assuming get_task_lock raises KeyError if id not found
+    except ProgramException:  # assuming get_task_lock raises ProgramException if id not found
         logger.warning("Task not found", extra={"task_id": id})
         raise HTTPException(status_code=404, detail=f"Task {id} not found")
     asyncio.run(task_lock.put_queue(ActionUpdateTaskData(action=Action.update_task, data=data)))
@@ -71,7 +72,7 @@ def take_control(id: str, data: TakeControl):
     logger.info("Task control action", extra={"task_id": id, "action": data.action})
     try:
         task_lock = get_task_lock(id)
-    except KeyError:  # assuming get_task_lock raises KeyError if id not found
+    except ProgramException:  # assuming get_task_lock raises ProgramException if id not found
         logger.warning("Task not found", extra={"task_id": id})
         raise HTTPException(status_code=404, detail=f"Task {id} not found")
     asyncio.run(task_lock.put_queue(ActionTakeControl(action=data.action)))
@@ -85,7 +86,7 @@ def add_agent(id: str, data: NewAgent):
     logger.debug("New agent data", extra={"task_id": id, "agent_data": data.model_dump_json()})
     try:
         task_lock = get_task_lock(id)
-    except KeyError:  # assuming get_task_lock raises KeyError if id not found
+    except ProgramException:  # assuming get_task_lock raises ProgramException if id not found
         logger.warning("Task not found", extra={"task_id": id})
         raise HTTPException(status_code=404, detail=f"Task {id} not found")
     asyncio.run(task_lock.put_queue(ActionNewAgent(**data.model_dump())))
