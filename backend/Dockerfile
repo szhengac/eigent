@@ -19,7 +19,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # System dependencies (Python 3.12+ required for asyncio.TaskGroup)
 # -----------------------------
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends software-properties-common && \
+    apt-get install -y --no-install-recommends software-properties-common gnupg dirmngr && \
     add-apt-repository -y ppa:deadsnakes/ppa && \
     apt-get update && \
     apt-get install -y --no-install-recommends \
