@@ -17,7 +17,7 @@ import base64
 import os
 import time
 from pathlib import Path
-from fastapi import APIRouter, Request, Response
+from fastapi import APIRouter, Request, Response, HTTPException
 from fastapi.responses import StreamingResponse
 import logging
 from app.component import code
@@ -180,7 +180,11 @@ async def post(data: Chat, request: Request):
 @router.post("/chat/{id}", name="improve chat")
 def improve(id: str, data: SupplementChat):
     chat_logger.info("Chat improvement requested", extra={"task_id": id, "question_length": len(data.question)})
-    task_lock = get_task_lock(id)
+    try:
+        task_lock = get_task_lock(id)
+    except KeyError:  # assuming get_task_lock raises KeyError if id not found
+        chat_logger.warning("Task not found", extra={"task_id": id})
+        raise HTTPException(status_code=404, detail=f"Task {id} not found")
 
     # Allow continuing conversation even after task is done
     # This supports multi-turn conversation after complex task completion
@@ -226,7 +230,11 @@ def improve(id: str, data: SupplementChat):
 @router.put("/chat/{id}", name="supplement task")
 def supplement(id: str, data: SupplementChat):
     chat_logger.info("Chat supplement requested", extra={"task_id": id})
-    task_lock = get_task_lock(id)
+    try:
+        task_lock = get_task_lock(id)
+    except KeyError:  # assuming get_task_lock raises KeyError if id not found
+        chat_logger.warning("Task not found", extra={"task_id": id})
+        raise HTTPException(status_code=404, detail=f"Task {id} not found")
     if task_lock.status != Status.done:
         raise UserException(code.error, "Please wait task done")
     asyncio.run(task_lock.put_queue(ActionSupplementData(data=data)))
@@ -256,7 +264,11 @@ def stop(id: str):
 @router.post("/chat/{id}/human-reply")
 def human_reply(id: str, data: HumanReply):
     chat_logger.info("Human reply received", extra={"task_id": id, "reply_length": len(data.reply)})
-    task_lock = get_task_lock(id)
+    try:
+        task_lock = get_task_lock(id)
+    except KeyError:  # assuming get_task_lock raises KeyError if id not found
+        chat_logger.warning("Task not found", extra={"task_id": id})
+        raise HTTPException(status_code=404, detail=f"Task {id} not found")
     asyncio.run(task_lock.put_human_input(data.agent, data.reply))
     chat_logger.debug("Human reply processed", extra={"task_id": id})
     return Response(status_code=201)
@@ -265,7 +277,11 @@ def human_reply(id: str, data: HumanReply):
 @router.post("/chat/{id}/install-mcp")
 def install_mcp(id: str, data: McpServers):
     chat_logger.info("Installing MCP servers", extra={"task_id": id, "servers_count": len(data.get("mcpServers", {}))})
-    task_lock = get_task_lock(id)
+    try:
+        task_lock = get_task_lock(id)
+    except KeyError:  # assuming get_task_lock raises KeyError if id not found
+        chat_logger.warning("Task not found", extra={"task_id": id})
+        raise HTTPException(status_code=404, detail=f"Task {id} not found")
     asyncio.run(task_lock.put_queue(ActionInstallMcpData(action=Action.install_mcp, data=data)))
     chat_logger.info("MCP installation queued", extra={"task_id": id})
     return Response(status_code=201)
@@ -275,7 +291,11 @@ def install_mcp(id: str, data: McpServers):
 def add_task(id: str, data: AddTaskRequest):
     """Add a new task to the workforce"""
     chat_logger.info(f"Adding task to workforce for task_id: {id}, content: {data.content[:100]}...")
-    task_lock = get_task_lock(id)
+    try:
+        task_lock = get_task_lock(id)
+    except KeyError:  # assuming get_task_lock raises KeyError if id not found
+        chat_logger.warning("Task not found", extra={"task_id": id})
+        raise HTTPException(status_code=404, detail=f"Task {id} not found")
 
     try:
         # Queue the add task action
@@ -298,7 +318,11 @@ def add_task(id: str, data: AddTaskRequest):
 def remove_task(project_id: str, task_id: str):
     """Remove a task from the workforce"""
     chat_logger.info(f"Removing task {task_id} from workforce for project_id: {project_id}")
-    task_lock = get_task_lock(project_id)
+    try:
+        task_lock = get_task_lock(project_id)
+    except KeyError:  # assuming get_task_lock raises KeyError if id not found
+        chat_logger.warning("Project not found", extra={"project_id": project_id})
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
 
     try:
         # Queue the remove task action
@@ -330,7 +354,11 @@ def skip_task(project_id: str):
     chat_logger.info("🛑 [STOP-BUTTON] SKIP-TASK request received from frontend (User clicked Stop)")
     chat_logger.info(f"[STOP-BUTTON] project_id: {project_id}")
     chat_logger.info("=" * 80)
-    task_lock = get_task_lock(project_id)
+    try:
+        task_lock = get_task_lock(project_id)
+    except KeyError:  # assuming get_task_lock raises KeyError if id not found
+        chat_logger.warning("Project not found", extra={"project_id": project_id})
+        raise HTTPException(status_code=404, detail=f"Project {project_id} not found")
     chat_logger.info(f"[STOP-BUTTON] Task lock retrieved, task_lock.id: {task_lock.id}, task_lock.status: {task_lock.status}")
 
     try:
