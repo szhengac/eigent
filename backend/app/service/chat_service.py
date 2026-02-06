@@ -35,7 +35,8 @@ from app.service.task import (
     ActionDecomposeProgressData,
     ActionDecomposeTextData,
 )
-from camel.toolkits import AgentCommunicationToolkit, ToolkitMessageIntegration
+from camel.toolkits import ToolkitMessageIntegration
+from camel.toolkits.mcp_toolkit import MCPConnectionError
 from app.utils.toolkit.human_toolkit import HumanToolkit
 from app.utils.toolkit.note_taking_toolkit import NoteTakingToolkit
 from app.utils.toolkit.terminal_toolkit import TerminalToolkit
@@ -1386,9 +1387,21 @@ The current date is {datetime.date.today()}. For any date-related tasks, you MUS
             t_multi_modal.result(),
             t_mcp.result(),
         )
-    except Exception as e:
-        logger.error(f"Failed to create agents in parallel: {e}", exc_info=True)
+    except* MCPConnectionError as eg:
+        # If the request was cancelled, this is NOT a real error
+        if asyncio.current_task().cancelled():
+            logger.info("Agent creation cancelled by user")
+            raise asyncio.CancelledError()
         raise
+
+    except* asyncio.CancelledError:
+        logger.info("Agent creation cancelled by user")
+        raise
+
+    except* Exception as eg:
+        logger.error("Failed to create agents in parallel", exc_info=eg)
+        raise
+
     finally:
         # Always clear event loop reference after parallel agent creation completes
         # This prevents stale references and potential cross-request interference
