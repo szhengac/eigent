@@ -43,6 +43,7 @@ from app.utils.toolkit.terminal_toolkit import TerminalToolkit
 from app.utils.workforce import Workforce
 from app.utils.telemetry.workforce_metrics import WorkforceMetricsCallback
 from app.model.chat import Chat, NewAgent, Status, sse_json, TaskContent
+from app.exception.exception import ProgramException
 from camel.tasks import Task
 from app.utils.agent import (
     ListenChatAgent,
@@ -1390,6 +1391,11 @@ The current date is {datetime.date.today()}. For any date-related tasks, you MUS
     except* MCPConnectionError as eg:
         # During agent creation, MCPConnectionError is cancellation-equivalent
         logger.info("Agent creation aborted (MCP connect interrupted)")
+        raise asyncio.CancelledError()
+
+    except* ProgramException as eg:
+        # Task was deleted because request was cancelled
+        logger.info("Agent creation aborted: task no longer exists")
         raise asyncio.CancelledError()
 
     except* asyncio.CancelledError:
