@@ -1388,11 +1388,9 @@ The current date is {datetime.date.today()}. For any date-related tasks, you MUS
             t_mcp.result(),
         )
     except* MCPConnectionError as eg:
-        # If the request was cancelled, this is NOT a real error
-        if asyncio.current_task().cancelled():
-            logger.info("Agent creation cancelled by user")
-            raise asyncio.CancelledError()
-        raise
+        # During agent creation, MCPConnectionError is cancellation-equivalent
+        logger.info("Agent creation aborted (MCP connect interrupted)")
+        raise asyncio.CancelledError()
 
     except* asyncio.CancelledError:
         logger.info("Agent creation cancelled by user")
