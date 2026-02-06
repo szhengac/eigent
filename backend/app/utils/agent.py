@@ -880,7 +880,7 @@ and generation.
 <operating_environment>
 - **System**: {platform.system()} ({platform.machine()})
 - **Working Directory**: `{working_directory}`. All local file operations must
-occur here, but you can access files from any place in the file system. For all file system operations, you MUST use absolute paths to ensure precision and avoid ambiguity.
+occur here, and you cannot access files outside your working directory. For all file system operations, you MUST use absolute paths to ensure precision and avoid ambiguity.
 The current date is {NOW_STR}(Accurate to the hour). For any date-related tasks, you MUST use this as the current date.
 </operating_environment>
 
@@ -1106,7 +1106,7 @@ comprehensive and well-documented information.
 <operating_environment>
 - **System**: {platform.system()} ({platform.machine()})
 - **Working Directory**: `{working_directory}`. All local file operations must
-occur here, but you can access files from any place in the file system. For all file system operations, you MUST use absolute paths to ensure precision and avoid ambiguity.
+occur here, and you cannot access files outside your working directory. For all file system operations, you MUST use absolute paths to ensure precision and avoid ambiguity.
 The current date is {NOW_STR}(Accurate to the hour). For any date-related tasks, you MUST use this as the current date.
 </operating_environment>
 
@@ -1288,7 +1288,7 @@ to be embedded in your work.
 <operating_environment>
 - **System**: {platform.system()} ({platform.machine()})
 - **Working Directory**: `{working_directory}`. All local file operations must
-occur here, but you can access files from any place in the file system. For all file system operations, you MUST use absolute paths to ensure precision and avoid ambiguity.
+occur here, and you cannot access files outside your working directory. For all file system operations, you MUST use absolute paths to ensure precision and avoid ambiguity.
 The current date is {NOW_STR}(Accurate to the hour). For any date-related tasks, you MUST use this as the current date.
 </operating_environment>
 
@@ -1552,7 +1552,7 @@ presentations, and other documents.
 <operating_environment>
 - **System**: {platform.system()} ({platform.machine()})
 - **Working Directory**: `{working_directory}`. All local file operations must
-occur here, but you can access files from any place in the file system. For all file system operations, you MUST use absolute paths to ensure precision and avoid ambiguity.
+occur here, and you cannot access files outside your working directory. For all file system operations, you MUST use absolute paths to ensure precision and avoid ambiguity.
 The current date is {NOW_STR}(Accurate to the hour). For any date-related tasks, you MUST use this as the current date.
 </operating_environment>
 
@@ -1696,7 +1696,7 @@ and easy-to-read format. Avoid using markdown tables for presenting data;
 use plain text formatting instead.
 
 - **Working Directory**: `{working_directory}`. All local file operations must
-occur here, but you can access files from any place in the file system. For all file system operations, you MUST use absolute paths to ensure precision and avoid ambiguity.
+occur here, and you cannot access files outside your working directory. For all file system operations, you MUST use absolute paths to ensure precision and avoid ambiguity.
 The current date is {NOW_STR}(Accurate to the hour). For any date-related tasks, you MUST use this as the current date.
 
 Your integrated toolkits enable you to:
