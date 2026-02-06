@@ -68,6 +68,9 @@ def _safe_put_queue(task_lock, data):
         def handle_task_result(t):
             try:
                 t.result()
+            except asyncio.CancelledError:
+                # Expected — user cancelled request
+                return
             except Exception as e:
                 logger.error(f"[SAFE_PUT_QUEUE] Background task failed: {e}")
         task.add_done_callback(handle_task_result)
