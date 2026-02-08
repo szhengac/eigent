@@ -15,6 +15,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.utils.anyio_cancel_patch import apply_anyio_cancel_delivery_patch
+
+# Cap anyio _deliver_cancellation iterations to prevent CPU spin on request cancel (anyio#695)
+apply_anyio_cancel_delivery_patch()
+
 # Initialize FastAPI with title
 api = FastAPI(title="Eigent Multi-Agent System API")
 
