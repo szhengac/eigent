@@ -1376,6 +1376,17 @@ The current date is {datetime.date.today()}. For any date-related tasks, you MUS
     # ========================================================================
     # Execute all agent creations in PARALLEL
     # ========================================================================
+    # Set cancel_event as soon as this task is cancelled (not only in except*). This
+    # reduces CPU spin: thread-pool workers exit early (see cancel_event checks in
+    # agent creators) and anyio's _deliver_cancellation stops retrying once tasks exit.
+    _request_task = asyncio.current_task()
+    if _request_task is not None:
+
+        def _on_cancelled(_t: asyncio.Task) -> None:
+            if _t.cancelled():
+                cancel_event.set()
+
+        _request_task.add_done_callback(_on_cancelled)
 
     try:
         # asyncio.TaskGroup runs all tasks concurrently; if one fails, others are cancelled (requires Python 3.11+)
