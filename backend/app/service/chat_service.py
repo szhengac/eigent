@@ -1310,12 +1310,9 @@ async def construct_workforce(options: Chat) -> tuple[Workforce, ListenChatAgent
     # ========================================================================
     # Shared event so thread-backed agent creation can exit early when request is cancelled.
     # asyncio.to_thread() cannot interrupt running threads; without this they keep using CPU.
-    cancel_event = threading.Event()
 
     def _create_coordinator_and_task_agents() -> list[ListenChatAgent]:
         """Create coordinator and task agents (sync, runs in thread pool)."""
-        if cancel_event.is_set():
-            raise asyncio.CancelledError()
         agents_spec = {
             Agents.coordinator_agent: f"""
 You are a helpful coordinator.
@@ -1332,8 +1329,6 @@ The current date is {datetime.date.today()}. For any date-related tasks, you MUS
         }
         result = []
         for key, prompt in agents_spec.items():
-            if cancel_event.is_set():
-                raise asyncio.CancelledError()
             result.append(
                 agent_model(
                     key,
@@ -1352,8 +1347,6 @@ The current date is {datetime.date.today()}. For any date-related tasks, you MUS
 
     def _create_new_worker_agent() -> ListenChatAgent:
         """Create new worker agent (sync, runs in thread pool)."""
-        if cancel_event.is_set():
-            raise asyncio.CancelledError()
         return agent_model(
             Agents.new_worker_agent,
             f"""
@@ -1376,18 +1369,6 @@ The current date is {datetime.date.today()}. For any date-related tasks, you MUS
     # ========================================================================
     # Execute all agent creations in PARALLEL
     # ========================================================================
-    # Set cancel_event as soon as this task is cancelled (not only in except*). This
-    # reduces CPU spin: thread-pool workers exit early (see cancel_event checks in
-    # agent creators) and anyio's _deliver_cancellation stops retrying once tasks exit.
-    _request_task = asyncio.current_task()
-    if _request_task is not None:
-
-        def _on_cancelled(_t: asyncio.Task) -> None:
-            if _t.cancelled():
-                cancel_event.set()
-
-        _request_task.add_done_callback(_on_cancelled)
-
     try:
         # asyncio.TaskGroup runs all tasks concurrently; if one fails, others are cancelled (requires Python 3.11+)
         # asyncio.to_thread runs sync functions in thread pool without blocking event loop
@@ -1397,12 +1378,12 @@ The current date is {datetime.date.today()}. For any date-related tasks, you MUS
             )
             t_new_worker = tg.create_task(asyncio.to_thread(_create_new_worker_agent))
             t_browser = tg.create_task(
-                asyncio.to_thread(browser_agent, options, cancel_event)
+                asyncio.to_thread(browser_agent, options)
             )
             t_developer = tg.create_task(developer_agent(options))
             t_document = tg.create_task(document_agent(options))
             t_multi_modal = tg.create_task(
-                asyncio.to_thread(multi_modal_agent, options, cancel_event)
+                asyncio.to_thread(multi_modal_agent, options)
             )
             t_mcp = tg.create_task(mcp_agent(options))
         results = (
@@ -1416,18 +1397,15 @@ The current date is {datetime.date.today()}. For any date-related tasks, you MUS
         )
     except* MCPConnectionError as eg:
         # During agent creation, MCPConnectionError is cancellation-equivalent
-        cancel_event.set()
         logger.info("Agent creation aborted (MCP connect interrupted)")
         raise asyncio.CancelledError()
 
     except* ProgramException as eg:
         # Task was deleted because request was cancelled
-        cancel_event.set()
         logger.info("Agent creation aborted: task no longer exists")
         raise asyncio.CancelledError()
 
-    except* asyncio.CancelledError:
-        cancel_event.set()  # Let thread-backed agent creators exit early
+    except* asyncio.CancelledError: # Let thread-backed agent creators exit early
         logger.info("Agent creation cancelled by user")
         raise
 
