@@ -16,6 +16,8 @@ import asyncio
 from functools import wraps
 from inspect import iscoroutinefunction, getmembers, ismethod, signature
 import json
+import queue
+import weakref
 from typing import Any, Callable, Type, TypeVar
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -50,44 +52,72 @@ def _pop_message_params_if_not_in_signature(func, kwargs):
     for name in _MESSAGE_PARAMS:
         if name in kwargs and name not in param_names:
             kwargs.pop(name)
-
+   
 
 def _safe_put_queue(task_lock, data):
-    """Safely put data to the queue, handling both sync and async contexts"""
+    """Safely put data to the queue, handling both async and sync contexts.
+    
+    - Uses a daemon thread if no running loop exists.
+    - Uses weakref to avoid holding deleted task_lock.
+    - Logs exceptions and handles CancelledError safely.
+    - Keeps result_queue logic for monitoring.
+    """
+    # Weak reference to avoid holding deleted task_lock
+    task_lock_ref = weakref.ref(task_lock)
+
     try:
         # Try to get current event loop
         loop = asyncio.get_running_loop()
+        current = asyncio.current_task()
+        if current is not None and current.cancelled():
+            return  # request was cancelled
 
-        # We're in an async context, create a task
-        task = asyncio.create_task(task_lock.put_queue(data))
+        # Async context: create a background task
+        task_lock_actual = task_lock_ref()
+        if task_lock_actual is None:
+            return  # task_lock deleted
 
-        if hasattr(task_lock, "add_background_task"):
-            task_lock.add_background_task(task)
+        task = asyncio.create_task(task_lock_actual.put_queue(data))
 
-        # Add done callback to handle any exceptions
+        if hasattr(task_lock_actual, "add_background_task"):
+            task_lock_actual.add_background_task(task)
+
+        # Done callback to handle exceptions
         def handle_task_result(t):
             try:
                 t.result()
             except asyncio.CancelledError:
-                # Expected — user cancelled request
-                return
+                return  # expected if request cancelled
             except Exception as e:
                 logger.error(f"[SAFE_PUT_QUEUE] Background task failed: {e}")
+
         task.add_done_callback(handle_task_result)
 
     except RuntimeError:
-        # No running event loop, run in a separate thread
+        # No running loop → run in a separate thread
         try:
-            import queue
             result_queue = queue.Queue()
 
             def run_in_thread():
+                task_lock_actual = task_lock_ref()
+                if task_lock_actual is None:
+                    return  # task_lock deleted, skip execution
+
                 try:
                     new_loop = asyncio.new_event_loop()
                     asyncio.set_event_loop(new_loop)
                     try:
-                        new_loop.run_until_complete(task_lock.put_queue(data))
+                        # Limit execution time to prevent runaway threads
+                        new_loop.run_until_complete(
+                            asyncio.wait_for(task_lock_actual.put_queue(data), timeout=3.0)
+                        )
                         result_queue.put(("success", None))
+                    except asyncio.TimeoutError:
+                        logger.warning("[SAFE_PUT_QUEUE] put_queue timed out after 3s")
+                        result_queue.put(("timeout", None))
+                    except asyncio.CancelledError:
+                        # Task cancelled — expected on user cancel
+                        result_queue.put(("cancelled", None))
                     except Exception as e:
                         logger.error(f"[SAFE_PUT_QUEUE] put_queue failed: {e}")
                         result_queue.put(("error", e))
@@ -97,10 +127,11 @@ def _safe_put_queue(task_lock, data):
                     logger.error(f"[SAFE_PUT_QUEUE] Thread failed: {e}")
                     result_queue.put(("error", e))
 
-            thread = threading.Thread(target=run_in_thread, daemon=False)
+            # Daemon thread: will exit automatically if server shuts down
+            thread = threading.Thread(target=run_in_thread, daemon=True)
             thread.start()
 
-            # Wait briefly for completion
+            # Wait briefly for thread completion
             try:
                 status, error = result_queue.get(timeout=1.0)
                 if status == "error":

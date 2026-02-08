@@ -17,6 +17,7 @@ import datetime
 import json
 from pathlib import Path
 import platform
+import threading
 from typing import Any, Literal
 from fastapi import Request
 from inflection import titleize
@@ -1307,40 +1308,52 @@ async def construct_workforce(options: Chat) -> tuple[Workforce, ListenChatAgent
     # ========================================================================
     # Define agent creation functions
     # ========================================================================
+    # Shared event so thread-backed agent creation can exit early when request is cancelled.
+    # asyncio.to_thread() cannot interrupt running threads; without this they keep using CPU.
+    cancel_event = threading.Event()
 
     def _create_coordinator_and_task_agents() -> list[ListenChatAgent]:
         """Create coordinator and task agents (sync, runs in thread pool)."""
-        return [
-            agent_model(
-                key,
-                prompt,
-                options,
-                [
-                    *(
-                        ToolkitMessageIntegration(
-                            message_handler=HumanToolkit(options.project_id, key).send_message_to_user
-                        ).register_toolkits(NoteTakingToolkit(options.project_id, working_directory=working_directory))
-                    ).get_tools()
-                ],
-            )
-            for key, prompt in {
-                Agents.coordinator_agent: f"""
+        if cancel_event.is_set():
+            raise asyncio.CancelledError()
+        agents_spec = {
+            Agents.coordinator_agent: f"""
 You are a helpful coordinator.
 - You are now working in system {platform.system()} with architecture
 {platform.machine()} at working directory `{working_directory}`. All local file operations must occur here, and you cannot access files outside your working directory. For all file system operations, you MUST use absolute paths to ensure precision and avoid ambiguity.
 The current date is {datetime.date.today()}. For any date-related tasks, you MUST use this as the current date.
             """,
-                Agents.task_agent: f"""
+            Agents.task_agent: f"""
 You are a helpful task planner.
 - You are now working in system {platform.system()} with architecture
 {platform.machine()} at working directory `{working_directory}`. All local file operations must occur here, and you cannot access files outside your working directory. For all file system operations, you MUST use absolute paths to ensure precision and avoid ambiguity.
 The current date is {datetime.date.today()}. For any date-related tasks, you MUST use this as the current date.
         """,
-            }.items()
-        ]
+        }
+        result = []
+        for key, prompt in agents_spec.items():
+            if cancel_event.is_set():
+                raise asyncio.CancelledError()
+            result.append(
+                agent_model(
+                    key,
+                    prompt,
+                    options,
+                    [
+                        *(
+                            ToolkitMessageIntegration(
+                                message_handler=HumanToolkit(options.project_id, key).send_message_to_user
+                            ).register_toolkits(NoteTakingToolkit(options.project_id, working_directory=working_directory))
+                        ).get_tools()
+                    ],
+                )
+            )
+        return result
 
     def _create_new_worker_agent() -> ListenChatAgent:
         """Create new worker agent (sync, runs in thread pool)."""
+        if cancel_event.is_set():
+            raise asyncio.CancelledError()
         return agent_model(
             Agents.new_worker_agent,
             f"""
@@ -1372,11 +1385,13 @@ The current date is {datetime.date.today()}. For any date-related tasks, you MUS
                 asyncio.to_thread(_create_coordinator_and_task_agents)
             )
             t_new_worker = tg.create_task(asyncio.to_thread(_create_new_worker_agent))
-            t_browser = tg.create_task(asyncio.to_thread(browser_agent, options))
+            t_browser = tg.create_task(
+                asyncio.to_thread(browser_agent, options, cancel_event)
+            )
             t_developer = tg.create_task(developer_agent(options))
             t_document = tg.create_task(document_agent(options))
             t_multi_modal = tg.create_task(
-                asyncio.to_thread(multi_modal_agent, options)
+                asyncio.to_thread(multi_modal_agent, options, cancel_event)
             )
             t_mcp = tg.create_task(mcp_agent(options))
         results = (
@@ -1390,15 +1405,18 @@ The current date is {datetime.date.today()}. For any date-related tasks, you MUS
         )
     except* MCPConnectionError as eg:
         # During agent creation, MCPConnectionError is cancellation-equivalent
+        cancel_event.set()
         logger.info("Agent creation aborted (MCP connect interrupted)")
         raise asyncio.CancelledError()
 
     except* ProgramException as eg:
         # Task was deleted because request was cancelled
+        cancel_event.set()
         logger.info("Agent creation aborted: task no longer exists")
         raise asyncio.CancelledError()
 
     except* asyncio.CancelledError:
+        cancel_event.set()  # Let thread-backed agent creators exit early
         logger.info("Agent creation cancelled by user")
         raise
 

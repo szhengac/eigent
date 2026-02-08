@@ -1019,7 +1019,9 @@ these tips to maximize your effectiveness:
     )
 
 
-def browser_agent(options: Chat):
+def browser_agent(options: Chat, cancel_event: Event | None = None):
+    if cancel_event is not None and cancel_event.is_set():
+        raise asyncio.CancelledError()
     working_directory = get_working_directory(options)
     logger.info(f"Creating browser agent for project: {options.project_id} in directory: {working_directory}")
     message_integration = ToolkitMessageIntegration(
@@ -1070,6 +1072,8 @@ def browser_agent(options: Chat):
 
     note_toolkit = NoteTakingToolkit(options.project_id, Agents.browser_agent, working_directory=working_directory)
     note_toolkit = message_integration.register_toolkits(note_toolkit)
+    if cancel_event is not None and cancel_event.is_set():
+        raise asyncio.CancelledError()
 
     search_tools = SearchToolkit.get_can_use_tools(options.project_id)
     if search_tools:
@@ -1450,7 +1454,9 @@ supported formats including advanced spreadsheet functionality.
     )
 
 
-def multi_modal_agent(options: Chat):
+def multi_modal_agent(options: Chat, cancel_event: Event | None = None):
+    if cancel_event is not None and cancel_event.is_set():
+        raise asyncio.CancelledError()
     working_directory = get_working_directory(options)
     logger.info(f"Creating multi-modal agent for project: {options.project_id} in directory: {working_directory}")
 
@@ -1485,6 +1491,8 @@ def multi_modal_agent(options: Chat):
         working_directory=working_directory,
     )
     note_toolkit = message_integration.register_toolkits(note_toolkit)
+    if cancel_event is not None and cancel_event.is_set():
+        raise asyncio.CancelledError()
     tools = [
         *video_download_toolkit.get_tools(),
         *image_analysis_toolkit.get_tools(),
