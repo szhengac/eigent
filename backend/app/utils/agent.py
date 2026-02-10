@@ -1516,23 +1516,21 @@ def multi_modal_agent(options: Chat):
     except (ValueError, AttributeError):
         model_platform_enum = None
 
-    if model_platform_enum == ModelPlatformType.OPENAI:
+    if model_platform_enum == ModelPlatformType.OPENAI or model_platform_enum == ModelPlatformType.GEMINI:
         audio_analysis_toolkit = AudioAnalysisToolkit(
             options.project_id,
             working_directory,
             OpenAIAudioModels(
                 api_key=options.api_key,
                 url=options.api_url,
-            ),
-        )
-        audio_analysis_toolkit = message_integration.register_toolkits(audio_analysis_toolkit)
-        tools.extend(audio_analysis_toolkit.get_tools())
-    elif model_platform_enum == ModelPlatformType.GEMINI:
-        audio_analysis_toolkit = AudioAnalysisToolkit(
-            options.project_id,
-            working_directory,
-            GeminiAudioModels(
+            ) if model_platform_enum == ModelPlatformType.OPENAI else GeminiAudioModels(
                 api_key=options.api_key,
+            ),
+            audio_reasoning_model=ModelFactory.create(
+                model_platform=options.model_platform,
+                model_type=options.model_type,
+                api_key=options.api_key,
+                url=options.api_url,
             ),
         )
         audio_analysis_toolkit = message_integration.register_toolkits(audio_analysis_toolkit)
