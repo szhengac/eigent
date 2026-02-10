@@ -133,6 +133,7 @@ from app.utils.toolkit.reddit_toolkit import RedditToolkit
 from app.utils.toolkit.slack_toolkit import SlackToolkit
 from app.utils.toolkit.lark_toolkit import LarkToolkit
 from app.utils.extra_params_config import _get_project_save_path
+from app.utils.toolkit.gemini_audio_models import GeminiAudioModels
 from camel.types import ModelPlatformType, ModelType
 from camel.toolkits import MCPToolkit, ToolkitMessageIntegration
 import datetime
@@ -1526,11 +1527,16 @@ def multi_modal_agent(options: Chat):
         )
         audio_analysis_toolkit = message_integration.register_toolkits(audio_analysis_toolkit)
         tools.extend(audio_analysis_toolkit.get_tools())
-
-    # if env("EXA_API_KEY") or options.is_cloud():
-    #     search_toolkit = SearchToolkit(options.project_id, Agents.multi_modal_agent).search_exa
-    #     search_toolkit = message_integration.register_functions([search_toolkit])
-    #     tools.extend(search_toolkit)
+    elif model_platform_enum == ModelPlatformType.GEMINI:
+        audio_analysis_toolkit = AudioAnalysisToolkit(
+            options.project_id,
+            working_directory,
+            GeminiAudioModels(
+                api_key=options.api_key,
+            ),
+        )
+        audio_analysis_toolkit = message_integration.register_toolkits(audio_analysis_toolkit)
+        tools.extend(audio_analysis_toolkit.get_tools())
 
     system_message = f"""
 <role>

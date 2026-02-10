@@ -13,13 +13,18 @@
 # ========= Copyright 2025-2026 @ Eigent.ai All Rights Reserved. =========
 
 import os
+from urllib.parse import urlparse
 from camel.models import BaseAudioModel, BaseModelBackend
 from camel.toolkits import AudioAnalysisToolkit as BaseAudioAnalysisToolkit
+from camel.toolkits.audio_analysis_toolkit import download_file
 
 from app.component.environment import env
 from app.service.task import Agents
-from app.utils.listen.toolkit_listen import auto_listen_toolkit
+from app.utils.listen.toolkit_listen import auto_listen_toolkit, listen_toolkit
 from app.utils.toolkit.abstract_toolkit import AbstractToolkit
+import logging
+
+logger = logging.getLogger("audio_analysis_toolkit")
 
 
 @auto_listen_toolkit(BaseAudioAnalysisToolkit)
@@ -40,3 +45,28 @@ class AudioAnalysisToolkit(BaseAudioAnalysisToolkit, AbstractToolkit):
             cache_dir = os.path.join(cache_dir, "tmp")
         super().__init__(cache_dir, transcribe_model, audio_reasoning_model, timeout)
         self.api_task_id = api_task_id
+
+    @listen_toolkit(
+        inputs=lambda _, audio_path: f"transcribe audio file: {audio_path}",
+    )
+    def audio2text(self, audio_path: str) -> str:
+        r"""Transcribe audio to text.
+
+        Args:
+            audio_path (str): The path to the audio file or URL.
+
+        Returns:
+            str: The transcribed text.
+        """
+        parsed_url = urlparse(audio_path)
+        is_url = all([parsed_url.scheme, parsed_url.netloc])
+        local_audio_path = audio_path
+
+        # If the audio is a URL, download it first
+        if is_url:
+            try:
+                local_audio_path = download_file(audio_path, self.cache_dir)
+            except Exception as e:
+                logger.error(f"Failed to download audio file: {e}")
+                return f"Failed to download audio file: {e!s}"
+        return super().audio2text(local_audio_path)
