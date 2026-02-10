@@ -52,6 +52,7 @@ RUN apt-get update && \
       libcairo2 \
       xdg-utils \
       ca-certificates \
+      ffmpeg \
       dbus && \
     mkdir -p /run/dbus && \
     rm -rf /var/lib/apt/lists/*
