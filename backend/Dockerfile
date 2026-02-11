@@ -107,6 +107,9 @@ RUN python3.12 -m pip install --no-cache-dir \
     "opentelemetry-sdk>=1.34.1" \
     "opentelemetry-exporter-otlp-proto-http>=1.34.1" \
     "google-genai==1.60.0" \
+    "plotly>=6.5.0" \
+    "kaleido>=1.2.0" \
+    "dash>=4.0.0" \
     "camel-ai[eigent] @ git+https://github.com/szhengac/camel.git@gemini"
 
 # -----------------------------
