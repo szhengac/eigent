@@ -40,7 +40,7 @@ class ExcelToolkit(BaseExcelToolkit, AbstractToolkit):
         super().__init__(timeout=timeout, working_directory=working_directory)
 
     @listen_toolkit(
-        inputs=lambda _, document_path: f"extract the content of the Excel file: {document_path}",
+        inputs=lambda _, document_path, include_cell_info: f"extract the content of the Excel file: {document_path}, {'with metadata' if include_cell_info else 'without metadata'}",
         return_msg=lambda res: f"Excel file content extracted with {len(res)} characters",
     )
     def extract_excel_content(self, document_path: str, include_cell_info: bool = False) -> str:
