@@ -53,6 +53,8 @@ RUN apt-get update && \
       xdg-utils \
       ca-certificates \
       ffmpeg \
+      libsecret-1-0 \
+      libsecret-1-dev \
       dbus && \
     mkdir -p /run/dbus && \
     rm -rf /var/lib/apt/lists/*
