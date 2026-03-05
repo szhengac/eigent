@@ -308,20 +308,17 @@ def cleanup_project_credentials(api_task_id: str) -> None:
         logger.warning("Failed to cleanup project credentials dir: %s", e)
 
 
-def cleanup_file_save_path(api_task_id: str) -> None:
-    """Remove the entire directory at task_lock.file_save_path (from Chat.file_save_path). Call when chat finishes."""
-    task_lock = get_task_lock_if_exists(api_task_id)
-    if not task_lock:
-        return
-    path = getattr(task_lock, "file_save_path", None)
+def _remove_dir(path: str, api_task_id: str) -> None:
     if not path:
         return
+
     dir_path = Path(path)
     if not dir_path.is_dir():
         return
+
     try:
         shutil.rmtree(dir_path)
-        logger.debug("Cleaned up file_save_path", extra={"project_id": api_task_id, "path": path})
+        logger.debug("Cleaned up directory", extra={"project_id": api_task_id, "path": path})
 
         # Remove parent dir if empty
         parent_dir = dir_path.parent
@@ -331,8 +328,22 @@ def cleanup_file_save_path(api_task_id: str) -> None:
                 "Removed empty parent directory",
                 extra={"project_id": api_task_id, "path": str(parent_dir)}
             )
+
     except OSError as e:
-        logger.warning("Failed to cleanup file_save_path %s: %s", path, e)
+        logger.warning("Failed to cleanup directory %s: %s", path, e)
+
+
+def cleanup_file_save_path(api_task_id: str) -> None:
+    """Remove directories created during the chat session."""
+    task_lock = get_task_lock_if_exists(api_task_id)
+    if not task_lock:
+        return
+
+    file_save_path = getattr(task_lock, "file_save_path", None)
+    new_folder_path = getattr(task_lock, "new_folder_path", None)
+
+    _remove_dir(file_save_path, api_task_id)
+    _remove_dir(new_folder_path, api_task_id)
 
 
 class TaskLock:
@@ -546,7 +557,7 @@ async def delete_task_lock(id: str):
 
     # Remove credentials written to project working directory
     cleanup_project_credentials(id)
-    # Remove entire file_save_path directory (from Chat.file_save_path) when chat finishes
+    # Remove entire file_save_path directory (from Chat.file_save_path) and new_folder_path when chat finishes
     cleanup_file_save_path(id)
 
     del task_locks[id]
