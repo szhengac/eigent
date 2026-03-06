@@ -37,13 +37,14 @@ from camel.societies.workforce.events import (TaskAssignedEvent,
 from camel.societies.workforce.prompts import TASK_DECOMPOSE_PROMPT
 from camel.societies.workforce.task_channel import TaskChannel
 from camel.societies.workforce.utils import (FailureHandlingConfig,
-                                             TaskAssignResult)
+                                             TaskAssignResult,
+                                             TaskAnalysisResult)
 from camel.societies.workforce.workforce import DEFAULT_WORKER_POOL_SIZE
 from camel.societies.workforce.workforce import Workforce as BaseWorkforce
 from camel.societies.workforce.workforce import WorkforceState
 from camel.societies.workforce.workforce_metrics import WorkforceMetrics
 from camel.societies.workforce.prompts import TASK_ANALYSIS_PROMPT
-from camel.tasks.task import Task, TaskState, validate_task_content, TaskAnalysisResult
+from camel.tasks.task import Task, TaskState, validate_task_content
 
 logger = logging.getLogger("workforce")
 
