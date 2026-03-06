@@ -209,7 +209,7 @@ def improve(id: str, data: SupplementChat):
         try:
             if id:
                 # Derive from server-owned data directory (same as Chat.file_save_path()).
-                base = os.getenv("EIGENT_DATA_DIR") or str(Path.home() / ".eigent" / "server_data")
+                base = os.getenv("EIGENT_DATA_DIR") or str(Path.home() / "sandbox" / "server_data")
                 new_folder_path = Path(base) / "projects" / f"project_{id}" / f"task_{data.task_id}"
                 new_folder_path.mkdir(parents=True, exist_ok=True)
                 chat_logger.info(f"Updated working directory to: {new_folder_path}")
