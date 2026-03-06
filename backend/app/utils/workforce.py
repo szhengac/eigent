@@ -24,6 +24,9 @@ from app.service.task import (Action, ActionAssignTaskData, ActionEndData,
 from app.utils.agent import ListenChatAgent
 from app.utils.single_agent_worker import SingleAgentWorker
 from app.utils.telemetry.workforce_metrics import WorkforceMetricsCallback
+from app.utils.toolkit.terminal_toolkit import TerminalToolkit
+from app.utils.toolkit.file_write_toolkit import FileToolkit
+from app.utils.file_utils import get_working_directory_from_task_lock
 from camel.agents import ChatAgent
 from camel.societies.workforce.base import BaseNode
 from camel.societies.workforce.events import (TaskAssignedEvent,
@@ -39,7 +42,8 @@ from camel.societies.workforce.workforce import DEFAULT_WORKER_POOL_SIZE
 from camel.societies.workforce.workforce import Workforce as BaseWorkforce
 from camel.societies.workforce.workforce import WorkforceState
 from camel.societies.workforce.workforce_metrics import WorkforceMetrics
-from camel.tasks.task import Task, TaskState, validate_task_content
+from camel.societies.workforce.prompts import TASK_ANALYSIS_PROMPT
+from camel.tasks.task import Task, TaskState, validate_task_content, TaskAnalysisResult
 
 logger = logging.getLogger("workforce")
 
@@ -82,6 +86,13 @@ class Workforce(BaseWorkforce):
         )
         self.task_agent.stream_accumulate = True
         self.task_agent._stream_accumulate_explicit = True
+        task_lock = get_task_lock(self.api_task_id)
+        self.task_agent.add_tools(
+            [
+                TerminalToolkit(api_task_id=self.api_task_id, working_directory=get_working_directory_from_task_lock(task_lock)),
+                FileToolkit(api_task_id=self.api_task_id, working_directory=get_working_directory_from_task_lock(task_lock)),
+            ]
+        )
         logger.info(
             f"[WF-LIFECYCLE] ✅ Workforce.__init__ COMPLETED, id={id(self)}")
 
@@ -838,3 +849,42 @@ class Workforce(BaseWorkforce):
             await delete_task_lock(self.api_task_id)
         except Exception as e:
             logger.error(f"Error cleaning up workforce resources: {e}")
+
+    def _analyze_task(
+        self,
+        task: Task,
+        *,
+        for_failure: bool,
+        error_message: Optional[str] = None,
+    ) -> TaskAnalysisResult:
+        r"""Unified task analysis for both failures and quality evaluation.
+
+        This method consolidates the logic for analyzing task failures and
+        evaluating task quality, using the unified TASK_ANALYSIS_PROMPT.
+
+        Args:
+            task (Task): The task to analyze
+            for_failure (bool): True for failure analysis, False for quality
+                evaluation
+            error_message (Optional[str]): Error message, required when
+                for_failure=True
+
+        Returns:
+            TaskAnalysisResult: Unified analysis result with recovery strategy
+                and optional quality metrics
+
+        Raises:
+            ValueError: If for_failure=True but error_message is None
+        """
+        # temporarily replace the imported constant
+        global TASK_ANALYSIS_PROMPT
+        old_prompt = TASK_ANALYSIS_PROMPT
+        TASK_ANALYSIS_PROMPT = old_prompt + "\nIf the task involves writing files or code, you must use FileToolkit or TerminalToolkit to check if the files or code are created or updated and execute code."
+        try:
+            return super()._analyze_task(
+                task,
+                for_failure=for_failure,
+                error_message=error_message,
+            )
+        finally:
+            TASK_ANALYSIS_PROMPT = old_prompt
