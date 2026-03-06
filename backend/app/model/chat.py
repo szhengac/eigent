@@ -75,7 +75,6 @@ class Chat(BaseModel):
         "1. A confirmation of task completion, referencing the original goal.\n"
         "2. A high-level overview of the work performed and the final outcome.\n"
         "3. A bulleted list of key results or accomplishments.\n"
-        "\nThe summary and final output the user ask for must be written in the same primary language used in the user's question.\n"
         "Adopt a confident and professional tone."
     )
     new_agents: list["NewAgent"] = []
