@@ -1331,6 +1331,8 @@ The current date is {NOW_STR}(Accurate to the hour). For any date-related tasks,
     the file content in this conversation, use that content for all
     analysis, categorization, and reporting steps. Re-reading the same
     file wastes context and can cause task failure.
+
+- **Do not forget to create or update the document if you are asked to do so**
 </mandatory_instructions>
 
 <capabilities>
