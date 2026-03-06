@@ -45,6 +45,7 @@ from camel.societies.workforce.workforce import WorkforceState
 from camel.societies.workforce.workforce_metrics import WorkforceMetrics
 from camel.societies.workforce.prompts import TASK_ANALYSIS_PROMPT
 from camel.tasks.task import Task, TaskState, validate_task_content
+import camel.societies.workforce.workforce as workforce_module
 
 logger = logging.getLogger("workforce")
 
@@ -878,9 +879,8 @@ class Workforce(BaseWorkforce):
             ValueError: If for_failure=True but error_message is None
         """
         # temporarily replace the imported constant
-        global TASK_ANALYSIS_PROMPT
-        old_prompt = TASK_ANALYSIS_PROMPT
-        TASK_ANALYSIS_PROMPT = old_prompt + """
+        old_prompt = workforce_module.TASK_ANALYSIS_PROMPT
+        workforce_module.TASK_ANALYSIS_PROMPT = old_prompt + """
 **NOTE FOR FILE OR CODE TASKS:**
 If the task involves creating or modifying files, verify that the files actually exist in the working directory and that their contents were written correctly.  
 If the task involves scripts or programs, verify that the code was saved to a file and executed using terminal commands (e.g., via `shell_exec` such as `python script.py`).  
@@ -894,4 +894,4 @@ Do not assume success based only on the response text. Validate the actual files
                 error_message=error_message,
             )
         finally:
-            TASK_ANALYSIS_PROMPT = old_prompt
+            workforce_module.TASK_ANALYSIS_PROMPT = old_prompt
