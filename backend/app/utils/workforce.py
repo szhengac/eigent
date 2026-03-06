@@ -880,7 +880,13 @@ class Workforce(BaseWorkforce):
         # temporarily replace the imported constant
         global TASK_ANALYSIS_PROMPT
         old_prompt = TASK_ANALYSIS_PROMPT
-        TASK_ANALYSIS_PROMPT = old_prompt + "\nIf the task involves writing files or code, you must use FileToolkit or TerminalToolkit to check if the files or code are created or updated and execute code."
+        TASK_ANALYSIS_PROMPT = old_prompt + """
+**NOTE FOR FILE OR CODE TASKS:**
+If the task involves creating or modifying files, verify that the files actually exist in the working directory and that their contents were written correctly.  
+If the task involves scripts or programs, verify that the code was saved to a file and executed using terminal commands (e.g., via `shell_exec` such as `python script.py`).  
+If the task should produce output files or artifacts, confirm those outputs were actually generated.  
+Do not assume success based only on the response text. Validate the actual files or execution results before evaluating task quality or deciding recovery actions.
+"""
         try:
             return super()._analyze_task(
                 task,

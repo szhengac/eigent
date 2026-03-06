@@ -321,6 +321,7 @@ class HybridBrowserPythonToolkit(BaseHybridBrowserToolkit, AbstractToolkit):
     def toolkit_name(cls) -> str:
         return "Browser Toolkit"
 
+    @listen_toolkit(return_msg=lambda _: "Clone session successfully")
     def clone_for_new_session(self, new_session_id: str | None = None) -> "HybridBrowserPythonToolkit":
         if new_session_id is None:
             new_session_id = str(uuid.uuid4())[:8]

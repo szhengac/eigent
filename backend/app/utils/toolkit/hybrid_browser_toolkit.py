@@ -28,7 +28,7 @@ from camel.toolkits.hybrid_browser_toolkit.ws_wrapper import WebSocketBrowserWra
 from app.component.command import bun, uv
 from app.component.environment import env
 from app.service.task import Agents
-from app.utils.listen.toolkit_listen import auto_listen_toolkit
+from app.utils.listen.toolkit_listen import auto_listen_toolkit, listen_toolkit
 from app.utils.toolkit.abstract_toolkit import AbstractToolkit
 import logging
 
@@ -456,6 +456,7 @@ class HybridBrowserToolkit(BaseHybridBrowserToolkit, AbstractToolkit):
             await websocket_connection_pool.close_connection(session_id)
             self._ws_wrapper = await websocket_connection_pool.get_connection(session_id, self._ws_config)
 
+    @listen_toolkit(return_msg=lambda _: "Clone session successfully")
     def clone_for_new_session(self, new_session_id: str | None = None) -> "HybridBrowserToolkit":
         import uuid
 
