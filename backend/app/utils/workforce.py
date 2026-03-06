@@ -90,8 +90,8 @@ class Workforce(BaseWorkforce):
         task_lock = get_task_lock(self.api_task_id)
         self.task_agent.add_tools(
             [
-                TerminalToolkit(api_task_id=self.api_task_id, working_directory=get_working_directory_from_task_lock(task_lock)),
-                FileToolkit(api_task_id=self.api_task_id, working_directory=get_working_directory_from_task_lock(task_lock)),
+                *TerminalToolkit(api_task_id=self.api_task_id, working_directory=get_working_directory_from_task_lock(task_lock)).get_tools(),
+                *FileToolkit(api_task_id=self.api_task_id, working_directory=get_working_directory_from_task_lock(task_lock)).get_tools(),
             ]
         )
         logger.info(
