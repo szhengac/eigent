@@ -266,26 +266,27 @@ class TerminalToolkit(BaseTerminalToolkit, AbstractToolkit):
         process_task_id = process_task.get("")
 
         # Create the coroutine
-        coro = task_lock.put_queue(
-            ActionTerminalData(
-                action=Action.terminal,
-                process_task_id=process_task_id,
-                data=output,
+        def make_coro():
+            return task_lock.put_queue(
+                ActionTerminalData(
+                    action=Action.terminal,
+                    process_task_id=process_task_id,
+                    data=output,
+                )
             )
-        )
 
         # Try to get the current event loop, if none exists, create a new one in a thread
         try:
             loop = asyncio.get_running_loop()
             # If we're in an async context, schedule the coroutine
-            task = loop.create_task(coro)
+            task = loop.create_task(make_coro())
             if hasattr(task_lock, "add_background_task"):
                 task_lock.add_background_task(task)
         except RuntimeError:
-            self._thread_pool.submit(self._run_coro_in_thread, coro,task_lock)
+            self._thread_pool.submit(self._run_coro_in_thread, make_coro, task_lock)
 
     @staticmethod
-    def _run_coro_in_thread(coro,task_lock):
+    def _run_coro_in_thread(make_coro, task_lock):
         """
         Execute coro in the thread pool, with each thread bound to a long-term event loop
         """
@@ -302,6 +303,7 @@ class TerminalToolkit(BaseTerminalToolkit, AbstractToolkit):
             TerminalToolkit._thread_local.loop = loop
 
         try:
+            coro = make_coro()
             task = loop.create_task(coro)
             if hasattr(task_lock, "add_background_task"):
                 task_lock.add_background_task(task)
