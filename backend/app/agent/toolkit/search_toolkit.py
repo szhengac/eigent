@@ -362,7 +362,7 @@ class SearchToolkit(BaseSearchToolkit, AbstractToolkit):
     @classmethod
     def get_can_use_tools(cls, api_task_id: str, agent_name: str | None = None) -> list[FunctionTool]:
         # Credentials only from Chat.creds_params["search"] (no env).
-        task_lock = get_task_lock_if_exists(api_task_id, agent_name=agent_name)
+        task_lock = get_task_lock_if_exists(api_task_id)
         if not task_lock:
             return []
         creds = getattr(task_lock, "creds_params", None) or {}
@@ -374,7 +374,7 @@ class SearchToolkit(BaseSearchToolkit, AbstractToolkit):
         has_local_env = bool((os.getenv("GOOGLE_API_KEY") and os.getenv("SEARCH_ENGINE_ID")) or os.getenv("CLOUD_API_KEY"))
         if not (has_direct or has_cloud or has_local_env):
             return []
-        search_toolkit = SearchToolkit(api_task_id)
+        search_toolkit = SearchToolkit(api_task_id, agent_name=agent_name)
         return [FunctionTool(search_toolkit.search_google)]
 
     # def get_tools(self) -> List[FunctionTool]:
