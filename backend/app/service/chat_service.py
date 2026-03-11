@@ -1355,7 +1355,6 @@ The current date is {datetime.date.today()}. For any date-related tasks, you MUS
                             options.project_id,
                             key,
                             working_directory=working_directory,
-                            user_id=options.skill_config_user_id(),
                         ).get_tools(),
                     ],
                 )
@@ -1390,7 +1389,6 @@ The current date is {datetime.date.today()}. For any date-related tasks, you MUS
                     options.project_id,
                     Agents.new_worker_agent,
                     working_directory=working_directory,
-                    user_id=options.skill_config_user_id(),
                 ).get_tools(),
             ],
         )
