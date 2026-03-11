@@ -21,11 +21,11 @@ from app.exception.exception import UserException
 from app.service.task import (Action, ActionAssignTaskData, ActionEndData,
                               ActionTaskStateData, ActionTimeoutData,
                               get_camel_task, get_task_lock)
-from app.utils.agent import ListenChatAgent
+from app.agent.listen_chat_agent import ListenChatAgent
 from app.utils.single_agent_worker import SingleAgentWorker
 from app.utils.telemetry.workforce_metrics import WorkforceMetricsCallback
-from app.utils.toolkit.terminal_toolkit import TerminalToolkit
-from app.utils.toolkit.file_write_toolkit import FileToolkit
+from app.agent.toolkit.terminal_toolkit import TerminalToolkit
+from app.agent.toolkit.file_write_toolkit import FileToolkit
 from app.utils.file_utils import get_working_directory_from_task_lock
 from camel.agents import ChatAgent
 from camel.societies.workforce.base import BaseNode
@@ -95,6 +95,13 @@ class Workforce(BaseWorkforce):
                 *FileToolkit(api_task_id=self.api_task_id, working_directory=get_working_directory_from_task_lock(task_lock)).get_tools(),
             ]
         )
+        workforce_module.TASK_ANALYSIS_PROMPT += """
+**NOTE FOR FILE OR CODE TASKS:**
+If the task involves creating or modifying files, verify that the files actually exist in the working directory and that their contents were written correctly.  
+If the task involves scripts or programs, verify that the code was saved to a file and executed using terminal commands (e.g., via `shell_exec` such as `python script.py`).  
+If the task should produce output files or artifacts, confirm those outputs were actually generated.  
+Do not assume success based only on the response text. Validate the actual files or execution results before evaluating task quality or deciding recovery actions.
+"""
         logger.info(
             f"[WF-LIFECYCLE] ✅ Workforce.__init__ COMPLETED, id={id(self)}")
 
@@ -706,7 +713,6 @@ class Workforce(BaseWorkforce):
                 task_id=task.id,
                 error_message=error_msg,
                 worker_id=getattr(task, "assigned_worker_id", None),
-                failure_count=task.failure_count,
             )
             metrics_callbacks[0].log_task_failed(event)
 
@@ -851,47 +857,3 @@ class Workforce(BaseWorkforce):
             await delete_task_lock(self.api_task_id)
         except Exception as e:
             logger.error(f"Error cleaning up workforce resources: {e}")
-
-    def _analyze_task(
-        self,
-        task: Task,
-        *,
-        for_failure: bool,
-        error_message: Optional[str] = None,
-    ) -> TaskAnalysisResult:
-        r"""Unified task analysis for both failures and quality evaluation.
-
-        This method consolidates the logic for analyzing task failures and
-        evaluating task quality, using the unified TASK_ANALYSIS_PROMPT.
-
-        Args:
-            task (Task): The task to analyze
-            for_failure (bool): True for failure analysis, False for quality
-                evaluation
-            error_message (Optional[str]): Error message, required when
-                for_failure=True
-
-        Returns:
-            TaskAnalysisResult: Unified analysis result with recovery strategy
-                and optional quality metrics
-
-        Raises:
-            ValueError: If for_failure=True but error_message is None
-        """
-        # temporarily replace the imported constant
-        old_prompt = workforce_module.TASK_ANALYSIS_PROMPT
-        workforce_module.TASK_ANALYSIS_PROMPT = old_prompt + """
-**NOTE FOR FILE OR CODE TASKS:**
-If the task involves creating or modifying files, verify that the files actually exist in the working directory and that their contents were written correctly.  
-If the task involves scripts or programs, verify that the code was saved to a file and executed using terminal commands (e.g., via `shell_exec` such as `python script.py`).  
-If the task should produce output files or artifacts, confirm those outputs were actually generated.  
-Do not assume success based only on the response text. Validate the actual files or execution results before evaluating task quality or deciding recovery actions.
-"""
-        try:
-            return super()._analyze_task(
-                task,
-                for_failure=for_failure,
-                error_message=error_message,
-            )
-        finally:
-            workforce_module.TASK_ANALYSIS_PROMPT = old_prompt

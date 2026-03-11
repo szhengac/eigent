@@ -33,7 +33,7 @@ from app.utils.file_utils import (
     get_changed_file_entries,
     get_working_directory_from_task_lock,
 )
-from app.utils.toolkit.abstract_toolkit import AbstractToolkit
+from app.agent.toolkit.abstract_toolkit import AbstractToolkit
 from app.service.task import process_task
 import logging
 

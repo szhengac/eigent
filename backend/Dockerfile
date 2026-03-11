@@ -113,7 +113,7 @@ RUN python3.12 -m pip install --no-cache-dir \
     "pandas" \
     "openpyxl" \
     "plotly" \
-    "camel-ai[eigent] @ git+https://github.com/szhengac/camel.git@gemini"
+    "camel-ai[eigent]==0.2.90a5"
 
 # -----------------------------
 # Expose FastAPI port only

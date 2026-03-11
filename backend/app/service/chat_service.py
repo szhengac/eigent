@@ -14,59 +14,62 @@
 
 import asyncio
 import datetime
-import json
-from pathlib import Path
 import platform
-import threading
-from typing import Any, Literal
+import logging
+import os
 from fastapi import Request
 from inflection import titleize
 from pydash import chain
-from app.component.debug import dump_class
-from app.component.environment import env
+from pathlib import Path
+from typing import Any
+
+from camel.toolkits import ToolkitMessageIntegration
+from camel.toolkits.mcp_toolkit import MCPConnectionError
+from camel.tasks import Task
+from camel.types import ModelPlatformType
+from camel.models import ModelProcessingError
+
 from app.utils.file_utils import get_working_directory
 from app.service.task import (
+    ActionInstallMcpData,
+    ActionNewAgent,
+    TaskLock,
+)
+from app.agent.agent_model import agent_model
+from app.agent.factory import (
+    browser_agent,
+    developer_agent,
+    document_agent,
+    mcp_agent,
+    multi_modal_agent,
+    question_confirm_agent,
+    task_summary_agent,
+)
+from app.service.task import (
+    Action,
+    ActionDecomposeProgressData,
+    ActionDecomposeTextData,
     ActionImproveData,
     ActionInstallMcpData,
     ActionNewAgent,
-    ActionTimeoutData,
+    Agents,
     TaskLock,
     delete_task_lock,
     set_current_task_id,
-    ActionDecomposeProgressData,
-    ActionDecomposeTextData,
 )
-from camel.toolkits import ToolkitMessageIntegration
-from camel.toolkits.mcp_toolkit import MCPConnectionError
-from app.utils.toolkit.human_toolkit import HumanToolkit
-from app.utils.toolkit.note_taking_toolkit import NoteTakingToolkit
-from app.utils.toolkit.terminal_toolkit import TerminalToolkit
+from app.agent.listen_chat_agent import ListenChatAgent
+from app.agent.toolkit.human_toolkit import HumanToolkit
+from app.agent.toolkit.note_taking_toolkit import NoteTakingToolkit
+from app.agent.toolkit.skill_toolkit import SkillToolkit
+from app.agent.toolkit.terminal_toolkit import TerminalToolkit
+from app.agent.tools import get_mcp_tools, get_toolkits
 from app.utils.workforce import Workforce
+from app.utils.event_loop_utils import set_main_event_loop
 from app.utils.telemetry.workforce_metrics import WorkforceMetricsCallback
-from app.model.chat import Chat, NewAgent, Status, sse_json, TaskContent
+from app.model.chat import Chat, NewAgent, Status, TaskContent, sse_json
 from app.exception.exception import ProgramException
-from camel.tasks import Task
-from app.utils.agent import (
-    ListenChatAgent,
-    agent_model,
-    get_mcp_tools,
-    get_toolkits,
-    mcp_agent,
-    developer_agent,
-    document_agent,
-    multi_modal_agent,
-    browser_agent,
-    social_medium_agent,
-    task_summary_agent,
-    question_confirm_agent,
-    set_main_event_loop,
-)
-from app.service.task import Action, Agents
+from app.service.task import Agents
 from app.utils.server.sync_step import sync_step
-from camel.types import ModelPlatformType
-from camel.models import ModelProcessingError
-import logging
-import os
 
 logger = logging.getLogger("chat_service")
 
@@ -249,9 +252,17 @@ def build_conversation_context(task_lock: TaskLock, header: str = "=== CONVERSAT
     return context
 
 
-def build_context_for_workforce(task_lock: TaskLock, options: Chat) -> str:
-    """Build context information for workforce."""
-    return build_conversation_context(task_lock, header="=== CONVERSATION HISTORY ===")
+def build_context_for_workforce(
+    task_lock: TaskLock,
+    options: Chat,
+    task_content: str | None = None,
+) -> str:
+    """Build context information for workforce.
+    Instructs coordinator to actively load skills using list_skills/load_skill tools.
+    """
+    return build_conversation_context(
+        task_lock, header="=== CONVERSATION HISTORY ==="
+    )
 
 
 @sync_step
@@ -1339,7 +1350,13 @@ The current date is {datetime.date.today()}. For any date-related tasks, you MUS
                             ToolkitMessageIntegration(
                                 message_handler=HumanToolkit(options.project_id, key).send_message_to_user
                             ).register_toolkits(NoteTakingToolkit(options.project_id, working_directory=working_directory))
-                        ).get_tools()
+                        ).get_tools(),
+                        *SkillToolkit(
+                            options.project_id,
+                            key,
+                            working_directory=working_directory,
+                            user_id=options.skill_config_user_id(),
+                        ).get_tools(),
                     ],
                 )
             )
@@ -1354,6 +1371,12 @@ The current date is {datetime.date.today()}. For any date-related tasks, you MUS
 - You are now working in system {platform.system()} with architecture
 {platform.machine()} at working directory `{working_directory}`. All local file operations must occur here, and you cannot access files outside your working directory. For all file system operations, you MUST use absolute paths to ensure precision and avoid ambiguity.
 The current date is {datetime.date.today()}. For any date-related tasks, you MUST use this as the current date.
+
+- **Skills System (Highest Priority Workflow)**: Skills are your primary execution source for specialized tasks.
+  - Trigger: If a task explicitly references a skill with double curly braces (e.g., {{pdf}} or {{data-analyzer}}), or clearly matches a skill domain, you MUST use the skill workflow first.
+  - Required order: 1) Call `list_skills` to confirm exact available skill names. 2) Call `load_skill` for the best matching skill before domain work. 3) Follow the loaded skill as the primary plan.
+  - Do not rely on memory for skill details; always use loaded content.
+  - Installing new skills: Many skills can be found at https://skills.sh/ (The Agent Skills Directory). If no available skill fits the task, you MAY install a new skill. Prefer the project-level skill space: `{working_directory}/.eigent/skills`. Create a subfolder per skill with a valid SKILL.md (YAML frontmatter with name and description, then body). After creating or updating skills, call `list_skills` again to see them.
         """,
             options,
             [
@@ -1362,6 +1385,12 @@ The current date is {datetime.date.today()}. For any date-related tasks, you MUS
                     ToolkitMessageIntegration(
                         message_handler=HumanToolkit(options.project_id, Agents.new_worker_agent).send_message_to_user
                     ).register_toolkits(NoteTakingToolkit(options.project_id, working_directory=working_directory))
+                ).get_tools(),
+                *SkillToolkit(
+                    options.project_id,
+                    Agents.new_worker_agent,
+                    working_directory=working_directory,
+                    user_id=options.skill_config_user_id(),
                 ).get_tools(),
             ],
         )

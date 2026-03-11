@@ -23,10 +23,17 @@ from app.utils.toolkit.abstract_toolkit import AbstractToolkit
 
 @auto_listen_toolkit(BaseScreenshotToolkit)
 class ScreenshotToolkit(BaseScreenshotToolkit, AbstractToolkit):
-    agent_name: str = Agents.developer_agent
+    agent_name: str
 
-    def __init__(self, api_task_id, working_directory: str | None = None, timeout: float | None = None):
+    def __init__(
+        self,
+        api_task_id,
+        agent_name: str,
+        working_directory: str | None = None,
+        timeout: float | None = None
+    ):
         self.api_task_id = api_task_id
+        self.agent_name = agent_name
         if working_directory is None:
             working_directory = env("EIGENT_DATA_DIR", os.path.expanduser("~/.eigent/server_data"))
         super().__init__(working_directory, timeout)

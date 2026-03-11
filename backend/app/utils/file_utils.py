@@ -17,8 +17,13 @@
 import base64
 import os
 import subprocess
+import logging
+import shutil
+from pathlib import Path
 
 from app.model.chat import Chat
+
+logger = logging.getLogger(__name__)
 
 # Max size for including file content as base64 (10 MiB)
 DEFAULT_MAX_FILE_SIZE_FOR_BASE64 = 10 * 1024 * 1024
