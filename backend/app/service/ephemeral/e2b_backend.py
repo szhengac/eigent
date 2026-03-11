@@ -19,10 +19,14 @@ from dataclasses import dataclass
 from typing import Mapping
 
 from app.service.ephemeral.backends import EphemeralBackendError, WorkerResponse
+from app.service.ephemeral.project_routing import extract_project_key
 
 
 def _b64encode(b: bytes) -> str:
     return base64.b64encode(b).decode("utf-8")
+
+
+_PROJECT_SANDBOXES: dict[str, object] = {}
 
 
 @dataclass(frozen=True)
@@ -44,8 +48,7 @@ class E2BEphemeralBackend:
         body: bytes,
     ) -> WorkerResponse:
         """
-        Creates a fresh E2B sandbox per request, runs the in-process request via TestClient,
-        then kills the sandbox.
+        Reuses an E2B sandbox per project key, running the in-process request via TestClient.
 
         Requires env: E2B_API_KEY (and optionally E2B_DOMAIN).
         """
@@ -56,6 +59,7 @@ class E2BEphemeralBackend:
                 "E2B backend requires 'e2b_code_interpreter' installed and E2B_API_KEY set."
             ) from e
 
+        project_key = extract_project_key(method, path, headers, body)
         req_obj = {
             "method": method,
             "path": path,
@@ -74,7 +78,14 @@ class E2BEphemeralBackend:
         if domain:
             sandbox_kwargs["domain"] = domain
 
-        sandbox = Sandbox(**sandbox_kwargs)
+        sandbox: "Sandbox"
+        # For project-scoped calls, reuse sandbox; otherwise one-off.
+        if project_key is not None:
+            sandbox = _PROJECT_SANDBOXES.get(project_key) or Sandbox(**sandbox_kwargs)
+            _PROJECT_SANDBOXES[project_key] = sandbox
+        else:
+            sandbox = Sandbox(**sandbox_kwargs)
+
         try:
             # Mirror only the env we need inside the sandbox.
             # (Workers must never enable the gateway again.)
@@ -152,8 +163,22 @@ with TestClient(api) as client:
         except Exception as e:
             raise EphemeralBackendError(f"E2B worker failed: {e!s}") from e
         finally:
+            # Only auto-kill non-project sandboxes; project-scoped ones are reused
+            if project_key is None:
+                try:
+                    sandbox.kill()
+                except Exception:
+                    pass
+
+    async def stop_all(self) -> None:
+        """
+        Kill all project-scoped sandboxes.
+        """
+        global _PROJECT_SANDBOXES
+        for sb in _PROJECT_SANDBOXES.values():
             try:
-                sandbox.kill()
+                sb.kill()
             except Exception:
                 pass
+        _PROJECT_SANDBOXES = {}
 

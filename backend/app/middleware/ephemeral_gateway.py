@@ -27,6 +27,7 @@ from app.service.ephemeral.backends import (
     EphemeralBackendError,
     build_ephemeral_backend_from_env,
 )
+from app.service.ephemeral.project_routing import extract_project_key
 
 
 def _split_csv(value: str | None) -> list[str]:
@@ -110,7 +111,28 @@ class EphemeralGatewayMiddleware(BaseHTTPMiddleware):
         if not self._config.enabled or _should_bypass(request, self._config):
             return await call_next(request)
 
+        # Non-project-scoped requests are handled by the parent container directly.
         body = await request.body()
+        project_key = extract_project_key(request.method, request.url.path, request.headers, body)
+
+        # Special-case: DELETE /task/stop-all should also tear down all workers.
+        if request.method.upper() == "DELETE" and request.url.path == "/task/stop-all":
+            # Let the parent handle its own state first.
+            parent_resp = await call_next(request)
+            try:
+                await self._backend.stop_all()
+            except Exception as e:  # pragma: no cover
+                # Surface as 502 if backend cleanup fails badly.
+                return Response(
+                    status_code=502,
+                    content=json.dumps({"error": "ephemeral_backend_error", "detail": f"stop_all failed: {e}"}),
+                    media_type="application/json",
+                )
+            return parent_resp
+
+        if project_key is None:
+            return await call_next(request)
+
         headers = _headers_to_forward(dict(request.headers))
         headers["x-eigent-ephemeral-worker"] = "1"
 

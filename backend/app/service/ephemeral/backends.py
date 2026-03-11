@@ -40,6 +40,14 @@ class EphemeralBackend(Protocol):
         body: bytes,
     ) -> WorkerResponse: ...
 
+    async def stop_all(self) -> None:
+        """
+        Stop/cleanup all project-scoped workers managed by this backend.
+
+        Implementations should be idempotent and best-effort.
+        """
+        ...
+
 
 def build_ephemeral_backend_from_env(name: str) -> EphemeralBackend:
     name = (name or "").strip().lower()
