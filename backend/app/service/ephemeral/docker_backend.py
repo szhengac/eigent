@@ -13,13 +13,12 @@
 # ========= Copyright 2025-2026 @ Eigent.ai All Rights Reserved. =========
 
 import asyncio
-import base64
-import json
 import os
 import uuid
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Mapping
+
+import httpx
 
 from app.service.ephemeral.backends import EphemeralBackendError, WorkerResponse
 
@@ -28,13 +27,6 @@ def _split_csv(value: str | None) -> list[str]:
     if not value:
         return []
     return [p.strip() for p in value.split(",") if p.strip()]
-
-
-def _b64encode(b: bytes) -> str:
-    return base64.b64encode(b).decode("utf-8")
-
-def _b64decode(s: str) -> bytes:
-    return base64.b64decode(s.encode("utf-8"))
 
 
 def _env_allowlist() -> set[str]:
@@ -51,17 +43,19 @@ def _env_allowlist() -> set[str]:
     return default | extra
 
 
-def _shared_dir() -> Path:
-    """
-    Directory used to hand off large request payloads to worker containers.
-
-    This path is on the gateway container filesystem and is bind-mounted into
-    the worker container at the same path.
-    """
-    base = os.environ.get("EIGENT_EPHEMERAL_SHARED_DIR", "/tmp/paxs/shared/ephemeral")
-    p = Path(base)
-    p.mkdir(parents=True, exist_ok=True)
-    return p
+async def _docker_stop(container_name: str) -> None:
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "docker",
+            "stop",
+            container_name,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await asyncio.wait_for(proc.communicate(), timeout=10)
+    except Exception:
+        # Best-effort; ignore failures
+        return
 
 
 @dataclass(frozen=True)
@@ -89,18 +83,14 @@ class DockerEphemeralBackend:
         headers: Mapping[str, str],
         body: bytes,
     ) -> WorkerResponse:
-        req_obj = {
-            "method": method,
-            "path": path,
-            "query_string": query_string,
-            "headers": dict(headers),
-            "body_b64": _b64encode(body),
-        }
-        # Serialize request to a shared file to avoid env size limits.
-        shared_dir = _shared_dir()
-        request_id = uuid.uuid4().hex
-        request_path = shared_dir / f"req-{request_id}.json"
-        request_path.write_text(json.dumps(req_obj), encoding="utf-8")
+        """
+        For each incoming request:
+          1. Start a fresh worker container running the same FastAPI app.
+          2. Wait for its /health endpoint to be ready.
+          3. Proxy the HTTP request to the worker via httpx (streaming).
+          4. Stop the worker container when done.
+        """
+        container_name = f"paxs-eigent-worker-{uuid.uuid4().hex[:12]}"
 
         # Pass through a controlled set of env vars into the worker.
         allow = _env_allowlist()
@@ -110,21 +100,17 @@ class DockerEphemeralBackend:
             if v is not None:
                 env_flags.extend(["-e", f"{k}={v}"])
 
-        # Disable gateway in worker and point it to the shared request file.
-        env_flags.extend(
-            [
-                "-e",
-                "EIGENT_EPHEMERAL_GATEWAY_ENABLED=false",
-                "-e",
-                f"EIGENT_EPHEMERAL_REQUEST_FILE={request_path}",
-            ]
-        )
+        # Ensure workers do not recursively gateway.
+        env_flags.extend(["-e", "EIGENT_EPHEMERAL_GATEWAY_ENABLED=false"])
 
-        # Run the in-repo worker runner module.
+        # Run worker container in detached mode; it will start /entrypoint.sh (uvicorn on port 5002).
         cmd = [
             "docker",
             "run",
+            "-d",
             "--rm",
+            "--name",
+            container_name,
         ]
 
         # Optional: use a specific Docker network if configured.
@@ -132,16 +118,10 @@ class DockerEphemeralBackend:
         if network:
             cmd.extend(["--network", network])
 
-        # Bind-mount the shared directory into the worker at the same path.
-        cmd.extend(["-v", f"{shared_dir}:{shared_dir}"])
-
         cmd.extend(
             [
                 *env_flags,
                 self.image,
-                "python",
-                "-m",
-                "app.service.ephemeral._worker_runner",
             ]
         )
 
@@ -154,97 +134,70 @@ class DockerEphemeralBackend:
         except FileNotFoundError as e:
             raise EphemeralBackendError("docker CLI not found in PATH") from e
 
-        if proc.stdout is None or proc.stderr is None:
-            try:
-                proc.kill()
-            except Exception:
-                pass
-            raise EphemeralBackendError("Failed to capture docker worker stdout/stderr")
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            raise EphemeralBackendError(
+                "Failed to start docker worker container. "
+                f"exit_code={proc.returncode} stderr={stderr.decode('utf-8', errors='replace')}"
+            )
 
-        async def _readline_with_timeout() -> bytes:
-            try:
-                return await asyncio.wait_for(proc.stdout.readline(), timeout=self.timeout_s)
-            except asyncio.TimeoutError as e:
+        # Wait for worker FastAPI app to be ready.
+        base_url = f"http://{container_name}:5002"
+        health_url = base_url + "/health"
+        startup_timeout = float(os.environ.get("EIGENT_EPHEMERAL_STARTUP_TIMEOUT_S", "30"))
+        start_time = asyncio.get_event_loop().time()
+
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            while True:
                 try:
-                    proc.kill()
+                    resp = await client.get(health_url)
+                    if resp.status_code < 500:
+                        break
                 except Exception:
                     pass
-                raise EphemeralBackendError(f"Docker worker timed out after {self.timeout_s}s") from e
 
-        first = await _readline_with_timeout()
-        if not first:
-            stderr = await proc.stderr.read()
-            try:
-                proc.kill()
-            except Exception:
-                pass
-            raise EphemeralBackendError(
-                "Docker worker produced no output. "
-                f"stderr={stderr.decode('utf-8', errors='replace')}"
-            )
+                if asyncio.get_event_loop().time() - start_time > startup_timeout:
+                    await _docker_stop(container_name)
+                    raise EphemeralBackendError(
+                        f"Docker worker did not become ready within {startup_timeout}s"
+                    )
+                await asyncio.sleep(0.3)
 
-        line = first.decode("utf-8", errors="replace").rstrip("\n")
-        if not line.startswith("EIGENT_META "):
-            stderr = await proc.stderr.read()
-            try:
-                proc.kill()
-            except Exception:
-                pass
-            raise EphemeralBackendError(
-                "Docker worker returned unexpected protocol header. "
-                f"stdout_first_line={line!r} stderr={stderr.decode('utf-8', errors='replace')}"
-            )
+        # Proxy the original request to the worker using httpx streaming.
+        url = path + (f"?{query_string}" if query_string else "")
+
+        # Avoid propagating a Host header tied to the gateway; let httpx set it.
+        filtered_headers = {k: v for k, v in headers.items() if k.lower() != "host"}
+
+        client_timeout = httpx.Timeout(self.timeout_s, read=self.timeout_s)
+        client = httpx.AsyncClient(base_url=base_url, timeout=client_timeout)
 
         try:
-            meta = json.loads(line.removeprefix("EIGENT_META ").strip())
-            status_code = int(meta["status_code"])
-            resp_headers = {str(k): str(v) for k, v in (meta.get("headers") or {}).items()}
-            media_type = meta.get("media_type")
+            resp = await client.stream(
+                method,
+                url,
+                headers=filtered_headers,
+                content=body,
+            )
         except Exception as e:
-            stderr = await proc.stderr.read()
-            try:
-                proc.kill()
-            except Exception:
-                pass
-            raise EphemeralBackendError(
-                "Docker worker returned invalid META JSON. "
-                f"stdout_first_line={line!r} stderr={stderr.decode('utf-8', errors='replace')}"
-            ) from e
+            await client.aclose()
+            await _docker_stop(container_name)
+            raise EphemeralBackendError(f"Error proxying request to docker worker: {e!s}") from e
 
         async def stream_iter():
             try:
-                while True:
-                    raw = await _readline_with_timeout()
-                    if not raw:
-                        break
-                    s = raw.decode("utf-8", errors="replace").rstrip("\n")
-                    if s == "EIGENT_DONE":
-                        break
-                    if not s.startswith("EIGENT_CHUNK "):
-                        continue
-                    b64 = s.removeprefix("EIGENT_CHUNK ").strip()
-                    if not b64:
-                        continue
-                    yield _b64decode(b64)
+                async for chunk in resp.aiter_bytes():
+                    if chunk:
+                        yield chunk
             finally:
-                try:
-                    await asyncio.wait_for(proc.wait(), timeout=5)
-                except Exception:
-                    try:
-                        proc.kill()
-                    except Exception:
-                        pass
-                # Best-effort cleanup of request file
-                try:
-                    if request_path.exists():
-                        request_path.unlink()
-                except Exception:
-                    pass
+                await resp.aclose()
+                await client.aclose()
+                await _docker_stop(container_name)
 
         return WorkerResponse(
-            status_code=status_code,
-            headers=resp_headers,
+            status_code=resp.status_code,
+            headers=dict(resp.headers),
             body_iter=stream_iter(),
-            media_type=media_type,
+            media_type=resp.headers.get("content-type"),
         )
 
