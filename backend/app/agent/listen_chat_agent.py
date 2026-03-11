@@ -59,6 +59,10 @@ logger = logging.getLogger("agent")
 
 
 class ListenChatAgent(ChatAgent):
+    _cdp_clone_lock = (
+        threading.Lock()
+    )  # Protects CDP URL mutation during clone
+    
     def __init__(
         self,
         api_task_id: str,
@@ -551,8 +555,62 @@ class ListenChatAgent(ChatAgent):
         """Please see super.clone()"""
         system_message = None if with_memory else self._original_system_message
 
-        # Clone tools and collect toolkits that need registration
-        cloned_tools, toolkits_to_register = self._clone_tools()
+        # If this agent has CDP acquire callback, acquire CDP BEFORE cloning
+        # tools so that HybridBrowserToolkit clones with the correct CDP port
+        new_cdp_port = None
+        new_cdp_session = None
+        has_cdp = hasattr(self, "_cdp_acquire_callback") and callable(
+            getattr(self, "_cdp_acquire_callback", None)
+        )
+
+        need_cdp_clone = False
+        if has_cdp and hasattr(self, "_cdp_options"):
+            options = self._cdp_options
+            cdp_browsers = getattr(options, "cdp_browsers", [])
+            if cdp_browsers and hasattr(self, "_browser_toolkit"):
+                need_cdp_clone = True
+                import uuid as _uuid
+
+                from app.agent.factory.browser import _cdp_pool_manager
+
+                new_cdp_session = str(_uuid.uuid4())[:8]
+                selected = _cdp_pool_manager.acquire_browser(
+                    cdp_browsers,
+                    new_cdp_session,
+                    getattr(self, "_cdp_task_id", None),
+                )
+                from app.agent.factory.browser import _get_browser_port
+
+                if selected:
+                    new_cdp_port = _get_browser_port(selected)
+                else:
+                    new_cdp_port = _get_browser_port(cdp_browsers[0])
+
+        if need_cdp_clone:
+            # Temporarily override the browser toolkit's CDP URL.
+            # Lock prevents concurrent clones from clobbering each
+            # other's cdp_url on the shared parent toolkit.
+            toolkit = self._browser_toolkit
+            with ListenChatAgent._cdp_clone_lock:
+                original_cdp_url = (
+                    toolkit.config_loader.get_browser_config().cdp_url
+                )
+                toolkit.config_loader.get_browser_config().cdp_url = (
+                    f"http://localhost:{new_cdp_port}"
+                )
+                try:
+                    cloned_tools, toolkits_to_register = self._clone_tools()
+                except Exception:
+                    _cdp_pool_manager.release_browser(
+                        new_cdp_port, new_cdp_session
+                    )
+                    raise
+                finally:
+                    toolkit.config_loader.get_browser_config().cdp_url = (
+                        original_cdp_url
+                    )
+        else:
+            cloned_tools, toolkits_to_register = self._clone_tools()
 
         new_agent = ListenChatAgent(
             api_task_id=self.api_task_id,

@@ -35,7 +35,7 @@ class SingleAgentWorker(BaseSingleAgentWorker):
         description: str,
         worker: ListenChatAgent,
         use_agent_pool: bool = True,
-        pool_initial_size: int = 1,
+        pool_initial_size: int = 0,  # Changed from 1 to 0 to avoid pre-creating clones that waste CDP resources
         pool_max_size: int = 10,
         auto_scale_pool: bool = True,
         use_structured_output_handler: bool = True,
