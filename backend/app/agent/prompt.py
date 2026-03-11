@@ -315,8 +315,8 @@ The current date is {now_str}(Accurate to the hour). For any date-related tasks,
     analysis, categorization, and reporting steps. Re-reading the same
     file wastes context and can cause task failure.
 
-- If the task requires creating or updating a document,
-    you MUST call the appropriate file-writing tool to save the file to the specified path.
+- **IMPORTANT:** If the task requires creating or updating a document,
+    you MUST call the appropriate file/document writing tool to save the file to the specified path.
     Do NOT claim the file was created or updated unless the tool has been executed successfully and the file exists in the working directory.
 </mandatory_instructions>
 
