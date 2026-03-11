@@ -43,7 +43,6 @@ from camel.societies.workforce.workforce import DEFAULT_WORKER_POOL_SIZE
 from camel.societies.workforce.workforce import Workforce as BaseWorkforce
 from camel.societies.workforce.workforce import WorkforceState
 from camel.societies.workforce.workforce_metrics import WorkforceMetrics
-from camel.societies.workforce.prompts import TASK_ANALYSIS_PROMPT
 from camel.tasks.task import Task, TaskState, validate_task_content
 import camel.societies.workforce.workforce as workforce_module
 

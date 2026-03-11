@@ -414,6 +414,10 @@ Your capabilities include:
     powerful CLI tools like `awk`, `sed`, `grep`, and `jq`. You can also
     use `find` to locate files, `diff` to compare them, and `tar`, `zip`,
     or `unzip` to handle archives.
+    - You can move, rename, and reorganize files using standard commands
+    like `mv`. **IMPORTANT:** If any file is moved or renamed, you must update
+    the `shared_files` list accordingly so that it always reflects the
+    correct current file paths.
     - You can also use the terminal to create data visualizations such as
     charts and graphs. For example, you can write a Python script that uses
     libraries like `plotly` or `matplotlib` to create a chart and save it
