@@ -17,7 +17,7 @@ from camel.toolkits.base import BaseToolkit
 from camel.toolkits.function_tool import FunctionTool
 from app.service.task import Action, ActionAskData, ActionNoticeData, get_task_lock
 from app.utils.listen.toolkit_listen import auto_listen_toolkit, listen_toolkit
-from app.utils.toolkit.abstract_toolkit import AbstractToolkit
+from app.agent.toolkit.abstract_toolkit import AbstractToolkit
 from app.service.task import process_task
 import logging
 
