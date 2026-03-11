@@ -19,7 +19,7 @@ from textwrap import indent
 from typing import Any, Dict, List
 from camel.toolkits import FunctionTool
 from app.service.task import get_task_lock_if_exists
-from app.utils.toolkit.abstract_toolkit import AbstractToolkit
+from app.agent.toolkit.abstract_toolkit import AbstractToolkit
 from camel.toolkits.mcp_toolkit import MCPToolkit
 import logging
 

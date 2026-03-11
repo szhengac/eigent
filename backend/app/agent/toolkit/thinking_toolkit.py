@@ -15,7 +15,7 @@
 from camel.toolkits import ThinkingToolkit as BaseThinkingToolkit
 
 from app.utils.listen.toolkit_listen import auto_listen_toolkit
-from app.utils.toolkit.abstract_toolkit import AbstractToolkit
+from app.agent.toolkit.abstract_toolkit import AbstractToolkit
 
 
 @auto_listen_toolkit(BaseThinkingToolkit)

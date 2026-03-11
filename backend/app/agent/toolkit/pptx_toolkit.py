@@ -19,7 +19,7 @@ from camel.toolkits import PPTXToolkit as BasePPTXToolkit
 from app.component.environment import env
 from app.service.task import ActionWriteFileData, Agents, get_task_lock
 from app.utils.listen.toolkit_listen import auto_listen_toolkit, listen_toolkit, _safe_put_queue
-from app.utils.toolkit.abstract_toolkit import AbstractToolkit
+from app.agent.toolkit.abstract_toolkit import AbstractToolkit
 from app.service.task import process_task
 
 

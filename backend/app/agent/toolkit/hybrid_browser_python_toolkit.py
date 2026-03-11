@@ -30,7 +30,7 @@ from app.component.environment import env
 from app.exception.exception import ProgramException
 from app.service.task import Agents
 from app.utils.listen.toolkit_listen import auto_listen_toolkit, listen_toolkit
-from app.utils.toolkit.abstract_toolkit import AbstractToolkit
+from app.agent.toolkit.abstract_toolkit import AbstractToolkit
 import logging
 
 logger = logging.getLogger("hybrid_browser_python_toolkit")

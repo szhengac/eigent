@@ -23,7 +23,7 @@ from camel.toolkits.twitter_toolkit import (
 
 from app.service.task import Agents, get_task_lock_if_exists
 from app.utils.listen.toolkit_listen import auto_listen_toolkit, listen_toolkit
-from app.utils.toolkit.abstract_toolkit import AbstractToolkit
+from app.agent.toolkit.abstract_toolkit import AbstractToolkit
 
 
 @auto_listen_toolkit(BaseTwitterToolkit)

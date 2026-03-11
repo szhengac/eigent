@@ -27,9 +27,8 @@ from camel.toolkits.terminal_toolkit.terminal_toolkit import _to_plain
 from app.component.environment import env
 from app.service.task import Action, ActionTerminalData, Agents, get_task_lock
 from app.utils.listen.toolkit_listen import auto_listen_toolkit
-from app.utils.toolkit.abstract_toolkit import AbstractToolkit
+from app.agent.toolkit.abstract_toolkit import AbstractToolkit
 from app.service.task import process_task
-import logging
 
 logger = logging.getLogger("terminal_toolkit")
 

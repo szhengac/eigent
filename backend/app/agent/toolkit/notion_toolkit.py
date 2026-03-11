@@ -17,7 +17,7 @@ from camel.toolkits import NotionToolkit as BaseNotionToolkit
 from camel.toolkits.function_tool import FunctionTool
 from app.service.task import Agents, get_task_lock_if_exists
 from app.utils.listen.toolkit_listen import auto_listen_toolkit
-from app.utils.toolkit.abstract_toolkit import AbstractToolkit
+from app.agent.toolkit.abstract_toolkit import AbstractToolkit
 
 
 @auto_listen_toolkit(BaseNotionToolkit)

@@ -11,13 +11,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ========= Copyright 2025-2026 @ Eigent.ai All Rights Reserved. =========
+import logging
 
 from camel.toolkits import SlackToolkit as BaseSlackToolkit
 from camel.toolkits.function_tool import FunctionTool
 from app.service.task import Agents, get_task_lock_if_exists
 from app.utils.listen.toolkit_listen import auto_listen_toolkit
-from app.utils.toolkit.abstract_toolkit import AbstractToolkit
-import logging
+from app.agent.toolkit.abstract_toolkit import AbstractToolkit
 
 logger = logging.getLogger("slack_toolkit")
 

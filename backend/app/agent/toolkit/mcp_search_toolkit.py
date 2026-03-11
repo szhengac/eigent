@@ -17,7 +17,7 @@ from camel.toolkits import BaseToolkit, FunctionTool
 import httpx
 from app.service.task import Action, ActionSearchMcpData, Agents, get_task_lock
 from app.utils.listen.toolkit_listen import listen_toolkit
-from app.utils.toolkit.abstract_toolkit import AbstractToolkit
+from app.agent.toolkit.abstract_toolkit import AbstractToolkit
 
 
 class McpSearchToolkit(BaseToolkit, AbstractToolkit):
