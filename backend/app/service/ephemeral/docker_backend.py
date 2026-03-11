@@ -53,10 +53,20 @@ async def _docker_stop(container_name: str) -> None:
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        await asyncio.wait_for(proc.communicate(), timeout=10)
-    except Exception:
-        # Best-effort; ignore failures
-        return
+        try:
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=15)
+        except asyncio.TimeoutError:
+            proc.kill()  # force kill if stop hangs
+            await proc.communicate()
+            print(f"Timeout: container {container_name} not stopped in time")
+            return
+
+        if proc.returncode != 0:
+            print(f"Error stopping container {container_name}: {stderr.decode().strip()}")
+        else:
+            print(f"Container {container_name} stopped successfully")
+    except Exception as e:
+        print(f"Unexpected error stopping container {container_name}: {e}")
 
 
 # In-memory mapping from logical project ids to running worker containers.
