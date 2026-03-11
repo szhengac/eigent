@@ -58,7 +58,7 @@ def _shared_dir() -> Path:
     This path is on the gateway container filesystem and is bind-mounted into
     the worker container at the same path.
     """
-    base = os.environ.get("EIGENT_EPHEMERAL_SHARED_DIR", "/workspace/runtime/ephemeral")
+    base = os.environ.get("EIGENT_EPHEMERAL_SHARED_DIR", "/tmp/paxs/shared/ephemeral")
     p = Path(base)
     p.mkdir(parents=True, exist_ok=True)
     return p

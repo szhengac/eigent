@@ -11,6 +11,7 @@ services:
       # Allow gateway container to spawn per-request docker workers.
       # This gives the container access to the host Docker daemon.
       - /var/run/docker.sock:/var/run/docker.sock
+      - /tmp:/tmp
     networks:
       - paxs-agent-net
 networks:
