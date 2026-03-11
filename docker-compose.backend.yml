@@ -12,7 +12,7 @@ services:
       # This gives the container access to the host Docker daemon.
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
-      - paxs_agent_net
+      - paxs-agent-net
 networks:
-  paxs_agent_net:
+  paxs-agent-net:
     driver: bridge
