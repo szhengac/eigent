@@ -85,6 +85,8 @@ payload_b64 = os.environ.get("EIGENT_EPHEMERAL_REQUEST_B64", "")
 req = json.loads(base64.b64decode(payload_b64).decode("utf-8"))
 
 from app import api
+from app.component.environment import env
+from app.router import register_routers
 from starlette.testclient import TestClient
 
 def b64decode(s: str) -> bytes:
@@ -99,6 +101,9 @@ qs = str(req.get("query_string") or "")
 url = path + (f"?{qs}" if qs else "")
 headers = dict(req.get("headers") or {})
 body = b64decode(str(req.get("body_b64") or ""))
+
+prefix = env("url_prefix", "")
+register_routers(api, prefix)
 
 with TestClient(api) as client:
     with client.stream(method, url, headers=headers, content=body) as r:

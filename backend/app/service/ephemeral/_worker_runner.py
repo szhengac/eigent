@@ -51,7 +51,13 @@ def main() -> None:
     os.environ["EIGENT_EPHEMERAL_GATEWAY_ENABLED"] = "false"
 
     from app import api  # local import so env is set first
+    from app.component.environment import env
+    from app.router import register_routers
     from starlette.testclient import TestClient
+
+    # Ensure routers are registered in worker (main.py does this in the gateway process).
+    prefix = env("url_prefix", "")
+    register_routers(api, prefix)
 
     method = str(req["method"]).upper()
     path = str(req["path"])
