@@ -64,7 +64,6 @@ class Chat(BaseModel):
     model_type: str
     api_key: str
     api_url: str | None = None  # for cloud version, user don't need to set api_url
-    browser_port: int = 9222
     cdp_browsers: list[dict] = Field(default_factory=list)
     max_retries: int = 3
     installed_mcp: McpServers = {"mcpServers": {}}
