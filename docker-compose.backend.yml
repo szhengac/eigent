@@ -15,4 +15,5 @@ services:
       - paxs-agent-net
 networks:
   paxs-agent-net:
+    name: paxs-agent-net
     driver: bridge
