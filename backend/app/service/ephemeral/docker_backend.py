@@ -100,14 +100,22 @@ class DockerEphemeralBackend:
             "run",
             "-i",
             "--rm",
-            "--network",
-            "paxs_agent_net",
-            *env_flags,
-            self.image,
-            "python",
-            "-m",
-            "app.service.ephemeral._worker_runner",
         ]
+
+        # Optional: use a specific Docker network if configured.
+        network = os.environ.get("EIGENT_EPHEMERAL_DOCKER_NETWORK")
+        if network:
+            cmd.extend(["--network", network])
+
+        cmd.extend(
+            [
+                *env_flags,
+                self.image,
+                "python",
+                "-m",
+                "app.service.ephemeral._worker_runner",
+            ]
+        )
 
         try:
             proc = await asyncio.create_subprocess_exec(
@@ -120,7 +128,10 @@ class DockerEphemeralBackend:
             raise EphemeralBackendError("docker CLI not found in PATH") from e
 
         if proc.stdout is None or proc.stderr is None or proc.stdin is None:
-            proc.kill()
+            try:
+                proc.kill()
+            except Exception:
+                pass
             raise EphemeralBackendError("Failed to capture docker worker stdout/stderr")
 
         # Send request payload then close stdin so worker can proceed.
@@ -132,13 +143,19 @@ class DockerEphemeralBackend:
             try:
                 return await asyncio.wait_for(proc.stdout.readline(), timeout=self.timeout_s)
             except asyncio.TimeoutError as e:
-                proc.kill()
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
                 raise EphemeralBackendError(f"Docker worker timed out after {self.timeout_s}s") from e
 
         first = await _readline_with_timeout()
         if not first:
             stderr = await proc.stderr.read()
-            proc.kill()
+            try:
+                proc.kill()
+            except Exception:
+                pass
             raise EphemeralBackendError(
                 "Docker worker produced no output. "
                 f"stderr={stderr.decode('utf-8', errors='replace')}"
@@ -147,7 +164,10 @@ class DockerEphemeralBackend:
         line = first.decode("utf-8", errors="replace").rstrip("\n")
         if not line.startswith("EIGENT_META "):
             stderr = await proc.stderr.read()
-            proc.kill()
+            try:
+                proc.kill()
+            except Exception:
+                pass
             raise EphemeralBackendError(
                 "Docker worker returned unexpected protocol header. "
                 f"stdout_first_line={line!r} stderr={stderr.decode('utf-8', errors='replace')}"
@@ -160,7 +180,10 @@ class DockerEphemeralBackend:
             media_type = meta.get("media_type")
         except Exception as e:
             stderr = await proc.stderr.read()
-            proc.kill()
+            try:
+                proc.kill()
+            except Exception:
+                pass
             raise EphemeralBackendError(
                 "Docker worker returned invalid META JSON. "
                 f"stdout_first_line={line!r} stderr={stderr.decode('utf-8', errors='replace')}"
@@ -185,7 +208,10 @@ class DockerEphemeralBackend:
                 try:
                     await asyncio.wait_for(proc.wait(), timeout=5)
                 except Exception:
-                    proc.kill()
+                    try:
+                        proc.kill()
+                    except Exception:
+                        pass
 
         return WorkerResponse(
             status_code=status_code,
