@@ -14,7 +14,6 @@
 
 import asyncio
 import logging
-import os
 
 from camel.toolkits import MCPToolkit
 
@@ -33,7 +32,7 @@ from app.agent.toolkit.notion_mcp_toolkit import NotionMCPToolkit
 from app.agent.toolkit.openai_image_toolkit import OpenAIImageToolkit
 from app.agent.toolkit.pptx_toolkit import PPTXToolkit
 from app.agent.toolkit.rag_toolkit import RAGToolkit
-from app.utils.toolkit.image_analysis_toolkit import ImageAnalysisToolkit
+from app.agent.toolkit.image_analysis_toolkit import ImageAnalysisToolkit
 from app.agent.toolkit.reddit_toolkit import RedditToolkit
 from app.agent.toolkit.search_toolkit import SearchToolkit
 from app.agent.toolkit.slack_toolkit import SlackToolkit
