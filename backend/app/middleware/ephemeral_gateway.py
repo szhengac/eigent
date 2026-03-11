@@ -12,11 +12,10 @@
 # limitations under the License.
 # ========= Copyright 2025-2026 @ Eigent.ai All Rights Reserved. =========
 
-import base64
 import json
 import os
 from dataclasses import dataclass
-from typing import Iterable, Mapping
+from typing import Mapping
 
 from fastapi import Request, Response
 from fastapi.responses import StreamingResponse
@@ -111,7 +110,6 @@ class EphemeralGatewayMiddleware(BaseHTTPMiddleware):
         if not self._config.enabled or _should_bypass(request, self._config):
             return await call_next(request)
 
-        # Non-project-scoped requests are handled by the parent container directly.
         body = await request.body()
         project_key = extract_project_key(request.method, request.url.path, request.headers, body)
 
@@ -130,8 +128,27 @@ class EphemeralGatewayMiddleware(BaseHTTPMiddleware):
                 )
             return parent_resp
 
+        # Non-project-scoped requests are handled by the parent container directly.
         if project_key is None:
             return await call_next(request)
+
+        # Per-project stop semantics:
+        # - DELETE /chat/{project_id}: stop chat and kill that project's worker.
+        # - POST /chat/{project_id}/skip-task: stop current task and kill that project's worker.
+        if request.method.upper() == "DELETE" and request.url.path.startswith("/chat/") and project_key:
+            parent_resp = await call_next(request)
+            await self._backend.stop_project(project_key)
+            return parent_resp
+
+        if (
+            request.method.upper() == "POST"
+            and request.url.path.startswith("/chat/")
+            and request.url.path.endswith("/skip-task")
+            and project_key
+        ):
+            parent_resp = await call_next(request)
+            await self._backend.stop_project(project_key)
+            return parent_resp
 
         headers = _headers_to_forward(dict(request.headers))
         headers["x-eigent-ephemeral-worker"] = "1"

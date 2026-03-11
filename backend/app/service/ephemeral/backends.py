@@ -48,6 +48,14 @@ class EphemeralBackend(Protocol):
         """
         ...
 
+    async def stop_project(self, project_id: str) -> None:
+        """
+        Stop/cleanup a single project's worker (container, sandbox, etc.).
+
+        Implementations should be idempotent and best-effort.
+        """
+        ...
+
 
 def build_ephemeral_backend_from_env(name: str) -> EphemeralBackend:
     name = (name or "").strip().lower()

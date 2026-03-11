@@ -187,7 +187,8 @@ class DockerEphemeralBackend:
                 "EIGENT_EPHEMERAL_DOCKER_IMAGE is required for docker backend "
                 "(e.g. the image built from backend/Dockerfile)."
             )
-        timeout_s = float(os.environ.get("EIGENT_EPHEMERAL_TIMEOUT_S", "120"))
+        # Align with SSE timeout in chat_controller (60 minutes) by default.
+        timeout_s = float(os.environ.get("EIGENT_EPHEMERAL_TIMEOUT_S", "3600"))
         return cls(image=image, timeout_s=timeout_s)
 
     async def handle_http(
@@ -262,5 +263,15 @@ class DockerEphemeralBackend:
             _PROJECT_WORKERS.clear()
 
         for _project_id, container_name in items:
+            await _docker_stop(container_name)
+
+    async def stop_project(self, project_id: str) -> None:
+        """
+        Stop a single project's worker container, if any.
+        """
+        async with _PROJECT_WORKERS_LOCK:
+            container_name = _PROJECT_WORKERS.pop(project_id, None)
+
+        if container_name:
             await _docker_stop(container_name)
 

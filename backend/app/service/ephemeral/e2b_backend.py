@@ -35,7 +35,8 @@ class E2BEphemeralBackend:
 
     @classmethod
     def from_env(cls) -> "E2BEphemeralBackend":
-        timeout_s = float(os.environ.get("EIGENT_EPHEMERAL_TIMEOUT_S", "120"))
+        # Align with SSE timeout in chat_controller (60 minutes) by default.
+        timeout_s = float(os.environ.get("EIGENT_EPHEMERAL_TIMEOUT_S", "3600"))
         return cls(timeout_s=timeout_s)
 
     async def handle_http(
@@ -181,4 +182,16 @@ with TestClient(api) as client:
             except Exception:
                 pass
         _PROJECT_SANDBOXES = {}
+
+    async def stop_project(self, project_id: str) -> None:
+        """
+        Kill a single project's sandbox, if any.
+        """
+        global _PROJECT_SANDBOXES
+        sb = _PROJECT_SANDBOXES.pop(project_id, None)
+        if sb is not None:
+            try:
+                sb.kill()
+            except Exception:
+                pass
 
