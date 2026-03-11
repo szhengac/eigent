@@ -12,19 +12,16 @@
 # limitations under the License.
 # ========= Copyright 2025-2026 @ Eigent.ai All Rights Reserved. =========
 
+import logging
 from fastapi import APIRouter, HTTPException, Body
 from pydantic import BaseModel
-from app.utils.toolkit.notion_mcp_toolkit import NotionMCPToolkit
-from app.utils.toolkit.google_calendar_toolkit import GoogleCalendarToolkit
+
+from app.agent.toolkit.notion_mcp_toolkit import NotionMCPToolkit
+from app.agent.toolkit.google_calendar_toolkit import GoogleCalendarToolkit
 from app.utils.oauth_state_manager import oauth_state_manager
 from app.service.task import get_or_create_task_lock
-import logging
-from camel.toolkits.hybrid_browser_toolkit.hybrid_browser_toolkit_ts import (
-    HybridBrowserToolkit as BaseHybridBrowserToolkit,
-)
 from app.utils.cookie_manager import CookieManager
 import os
-import uuid
 
 logger = logging.getLogger("tool_controller")
 router = APIRouter()

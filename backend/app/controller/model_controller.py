@@ -16,7 +16,6 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from app.component.model_validation import create_agent
 from app.model.chat import PLATFORM_MAPPING
-from camel.types import ModelType
 from app.component.error_format import normalize_error_to_openai_format
 import logging
 
