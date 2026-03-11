@@ -16,7 +16,9 @@ import asyncio
 import base64
 import json
 import os
+import uuid
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Mapping
 
 from app.service.ephemeral.backends import EphemeralBackendError, WorkerResponse
@@ -47,6 +49,19 @@ def _env_allowlist() -> set[str]:
     }
     extra = set(_split_csv(os.environ.get("EIGENT_EPHEMERAL_ENV_ALLOWLIST")))
     return default | extra
+
+
+def _shared_dir() -> Path:
+    """
+    Directory used to hand off large request payloads to worker containers.
+
+    This path is on the gateway container filesystem and is bind-mounted into
+    the worker container at the same path.
+    """
+    base = os.environ.get("EIGENT_EPHEMERAL_SHARED_DIR", "/workspace/runtime/ephemeral")
+    p = Path(base)
+    p.mkdir(parents=True, exist_ok=True)
+    return p
 
 
 @dataclass(frozen=True)
@@ -81,7 +96,11 @@ class DockerEphemeralBackend:
             "headers": dict(headers),
             "body_b64": _b64encode(body),
         }
-        req_b64 = _b64encode(json.dumps(req_obj).encode("utf-8"))
+        # Serialize request to a shared file to avoid env size limits.
+        shared_dir = _shared_dir()
+        request_id = uuid.uuid4().hex
+        request_path = shared_dir / f"req-{request_id}.json"
+        request_path.write_text(json.dumps(req_obj), encoding="utf-8")
 
         # Pass through a controlled set of env vars into the worker.
         allow = _env_allowlist()
@@ -91,13 +110,13 @@ class DockerEphemeralBackend:
             if v is not None:
                 env_flags.extend(["-e", f"{k}={v}"])
 
-        # Disable gateway in worker and pass request payload via env.
+        # Disable gateway in worker and point it to the shared request file.
         env_flags.extend(
             [
                 "-e",
                 "EIGENT_EPHEMERAL_GATEWAY_ENABLED=false",
                 "-e",
-                f"EIGENT_EPHEMERAL_REQUEST_B64={req_b64}",
+                f"EIGENT_EPHEMERAL_REQUEST_FILE={request_path}",
             ]
         )
 
@@ -112,6 +131,9 @@ class DockerEphemeralBackend:
         network = os.environ.get("EIGENT_EPHEMERAL_DOCKER_NETWORK")
         if network:
             cmd.extend(["--network", network])
+
+        # Bind-mount the shared directory into the worker at the same path.
+        cmd.extend(["-v", f"{shared_dir}:{shared_dir}"])
 
         cmd.extend(
             [
@@ -212,6 +234,12 @@ class DockerEphemeralBackend:
                         proc.kill()
                     except Exception:
                         pass
+                # Best-effort cleanup of request file
+                try:
+                    if request_path.exists():
+                        request_path.unlink()
+                except Exception:
+                    pass
 
         return WorkerResponse(
             status_code=status_code,
