@@ -41,6 +41,7 @@ logging.getLogger("camel.societies").setLevel(logging.WARNING)
 from app import api
 from app.component.environment import env
 from app.router import register_routers
+from app.middleware.ephemeral_gateway import maybe_install_ephemeral_gateway
 
 os.environ["PYTHONIOENCODING"] = "utf-8"
 
@@ -55,6 +56,11 @@ prefix = env("url_prefix", "")
 app_logger.info(f"Loading routers with prefix: '{prefix}'")
 register_routers(api, prefix)
 app_logger.info("All routers loaded successfully")
+
+# Optional: turn this API into an ephemeral-execution gateway.
+# When enabled, each incoming request is executed inside a fresh worker
+# environment (docker container or e2b sandbox) and the response is forwarded back.
+maybe_install_ephemeral_gateway(api)
 
 # Check if debug mode is enabled via environment variable
 if os.environ.get('ENABLE_PYTHON_DEBUG') == 'true':
