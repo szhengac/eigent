@@ -98,6 +98,7 @@ class DockerEphemeralBackend:
         cmd = [
             "docker",
             "run",
+            "-i",
             "--rm",
             *env_flags,
             self.image,
