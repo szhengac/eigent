@@ -173,12 +173,13 @@ class DockerEphemeralBackend:
         client = httpx.AsyncClient(base_url=base_url, timeout=client_timeout)
 
         try:
-            resp = await client.stream(
-                method,
-                url,
+            request = client.build_request(
+                method=method,
+                url=url,
                 headers=filtered_headers,
                 content=body,
             )
+            resp = await client.send(request, stream=True)
         except Exception as e:
             await client.aclose()
             await _docker_stop(container_name)
