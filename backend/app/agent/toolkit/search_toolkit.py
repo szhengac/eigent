@@ -360,9 +360,9 @@ class SearchToolkit(BaseSearchToolkit, AbstractToolkit):
     #     )
 
     @classmethod
-    def get_can_use_tools(cls, api_task_id: str) -> list[FunctionTool]:
+    def get_can_use_tools(cls, api_task_id: str, agent_name: str | None = None) -> list[FunctionTool]:
         # Credentials only from Chat.creds_params["search"] (no env).
-        task_lock = get_task_lock_if_exists(api_task_id)
+        task_lock = get_task_lock_if_exists(api_task_id, agent_name=agent_name)
         if not task_lock:
             return []
         creds = getattr(task_lock, "creds_params", None) or {}
