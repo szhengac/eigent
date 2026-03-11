@@ -100,6 +100,8 @@ class DockerEphemeralBackend:
             "run",
             "-i",
             "--rm",
+            "--network",
+            "paxs_agent_net",
             *env_flags,
             self.image,
             "python",
