@@ -27,6 +27,7 @@ RUN apt-get update && \
       build-essential \
       git \
       curl \
+      docker.io \
       unzip \
       wget \
       fonts-liberation \

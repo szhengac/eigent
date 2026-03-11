@@ -7,4 +7,7 @@ services:
       - "5002:5002"
     restart: unless-stopped
     env_file: .env.backend
-
+    volumes:
+      # Allow gateway container to spawn per-request docker workers.
+      # This gives the container access to the host Docker daemon.
+      - /var/run/docker.sock:/var/run/docker.sock
