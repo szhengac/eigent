@@ -91,14 +91,20 @@ class DockerEphemeralBackend:
             if v is not None:
                 env_flags.extend(["-e", f"{k}={v}"])
 
-        # Disable gateway in worker. (Request payload is passed via stdin to avoid env size limits.)
-        env_flags.extend(["-e", "EIGENT_EPHEMERAL_GATEWAY_ENABLED=false"])
+        # Disable gateway in worker and pass request payload via env.
+        env_flags.extend(
+            [
+                "-e",
+                "EIGENT_EPHEMERAL_GATEWAY_ENABLED=false",
+                "-e",
+                f"EIGENT_EPHEMERAL_REQUEST_B64={req_b64}",
+            ]
+        )
 
         # Run the in-repo worker runner module.
         cmd = [
             "docker",
             "run",
-            "-i",
             "--rm",
         ]
 
@@ -122,22 +128,16 @@ class DockerEphemeralBackend:
                 *cmd,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
-                stdin=asyncio.subprocess.PIPE,
             )
         except FileNotFoundError as e:
             raise EphemeralBackendError("docker CLI not found in PATH") from e
 
-        if proc.stdout is None or proc.stderr is None or proc.stdin is None:
+        if proc.stdout is None or proc.stderr is None:
             try:
                 proc.kill()
             except Exception:
                 pass
             raise EphemeralBackendError("Failed to capture docker worker stdout/stderr")
-
-        # Send request payload then close stdin so worker can proceed.
-        proc.stdin.write((req_b64 + "\n").encode("utf-8"))
-        await proc.stdin.drain()
-        proc.stdin.close()
 
         async def _readline_with_timeout() -> bytes:
             try:
