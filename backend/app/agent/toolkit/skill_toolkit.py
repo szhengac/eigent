@@ -43,8 +43,6 @@ class SkillToolkit(BaseSkillToolkit):
     """Enhanced SkillToolkit with Eigent-specific features.
 
     Extends CAMEL's SkillToolkit with:
-    - User-specific skill configuration
-    - Agent-based access control
     - Eigent-specific skill paths (.eigent/skills)
     - Dynamic skill discovery: skills are rescanned on every access so that
       newly installed skills (e.g. created by the agent during the task)
@@ -119,6 +117,7 @@ class SkillToolkit(BaseSkillToolkit):
         # 2. User scope - user-level skills
         roots.append(("user", Path.home() / ".eigent" / "skills"))
         roots.append(("user", Path.home() / ".camel" / "skills"))
+        roots.append(("user", Path.home() / ".agents" / "skills"))
         roots.append(("user", Path.home() / ".config" / "camel" / "skills"))
 
         # 3. System scope - system-wide skills (lowest priority)
