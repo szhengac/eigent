@@ -115,8 +115,6 @@ class EphemeralGatewayMiddleware(BaseHTTPMiddleware):
 
         # Special-case: DELETE /task/stop-all should also tear down all workers.
         if request.method.upper() == "DELETE" and request.url.path == "/task/stop-all":
-            # Let the parent handle its own state first.
-            parent_resp = await call_next(request)
             try:
                 await self._backend.stop_all()
             except Exception as e:  # pragma: no cover
@@ -126,29 +124,12 @@ class EphemeralGatewayMiddleware(BaseHTTPMiddleware):
                     content=json.dumps({"error": "ephemeral_backend_error", "detail": f"stop_all failed: {e}"}),
                     media_type="application/json",
                 )
-            return parent_resp
+            # Parent does not own project/task state; we handled it entirely in workers.
+            return Response(status_code=204)
 
         # Non-project-scoped requests are handled by the parent container directly.
         if project_key is None:
             return await call_next(request)
-
-        # Per-project stop semantics:
-        # - DELETE /chat/{project_id}: stop chat and kill that project's worker.
-        # - POST /chat/{project_id}/skip-task: stop current task and kill that project's worker.
-        if request.method.upper() == "DELETE" and request.url.path.startswith("/chat/") and project_key:
-            parent_resp = await call_next(request)
-            await self._backend.stop_project(project_key)
-            return parent_resp
-
-        if (
-            request.method.upper() == "POST"
-            and request.url.path.startswith("/chat/")
-            and request.url.path.endswith("/skip-task")
-            and project_key
-        ):
-            parent_resp = await call_next(request)
-            await self._backend.stop_project(project_key)
-            return parent_resp
 
         headers = _headers_to_forward(dict(request.headers))
         headers["x-eigent-ephemeral-worker"] = "1"
@@ -167,6 +148,17 @@ class EphemeralGatewayMiddleware(BaseHTTPMiddleware):
                 content=json.dumps({"error": "ephemeral_backend_error", "detail": str(e)}),
                 media_type="application/json",
             )
+
+        # Per-project stop semantics:
+        # - DELETE /chat/{project_id}: stop chat and kill that project's worker.
+        # - POST /chat/{project_id}/skip-task: stop current task and kill that project's worker.
+        method = request.method.upper()
+        path = request.url.path
+        if project_key and (
+            (method == "DELETE" and path.startswith("/chat/"))
+            or (method == "POST" and path.startswith("/chat/") and path.endswith("/skip-task"))
+        ):
+            await self._backend.stop_project(project_key)
 
         if worker_resp.body_iter is not None:
             return StreamingResponse(
