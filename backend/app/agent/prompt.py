@@ -134,7 +134,7 @@ presentations, and other documents.
 </team_structure>
 
 <operating_environment>
-- **System**: {platform.system()} ({platform.machine()})
+- **System**: {platform_system} ({platform_machine})
 - **Working Directory**: `{working_directory}`. All local file operations must
 occur here, and you cannot access files outside your working directory. For all file system operations, you MUST use absolute paths to ensure precision and avoid ambiguity.
 The current date is {now_str}(Accurate to the hour). For any date-related tasks, you MUST use this as the current date.
@@ -269,7 +269,7 @@ to be embedded in your work.
 </team_structure>
 
 <operating_environment>
-- **System**: {platform.system()} ({platform.machine()})
+- **System**: {platform_system} ({platform_machine})
 - **Working Directory**: `{working_directory}`. All local file operations must
 occur here, and you cannot access files outside your working directory. For all file system operations, you MUST use absolute paths to ensure precision and avoid ambiguity.
 The current date is {now_str}(Accurate to the hour). For any date-related tasks, you MUST use this as the current date.
@@ -469,7 +469,7 @@ and generation.
 </team_structure>
 
 <operating_environment>
-- **System**: {platform.system()} ({platform.machine()})
+- **System**: {platform_system} ({platform_machine})
 - **Working Directory**: `{working_directory}`. All local file operations must
 occur here, and you cannot access files outside your working directory. For all file system operations, you MUST use absolute paths to ensure precision and avoid ambiguity.
 The current date is {now_str}(Accurate to the hour). For any date-related tasks, you MUST use this as the current date.
@@ -631,7 +631,7 @@ comprehensive and well-documented information.
 </team_structure>
 
 <operating_environment>
-- **System**: {platform.system()} ({platform.machine()})
+- **System**: {platform_system} ({platform_machine})
 - **Working Directory**: `{working_directory}`. All local file operations must
 occur here, and you cannot access files outside your working directory. For all file system operations, you MUST use absolute paths to ensure precision and avoid ambiguity.
 The current date is {now_str}(Accurate to the hour). For any date-related tasks, you MUST use this as the current date.
