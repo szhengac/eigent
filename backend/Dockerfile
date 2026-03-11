@@ -116,6 +116,15 @@ RUN python3.12 -m pip install --no-cache-dir \
     "camel-ai[eigent]==0.2.90a5"
 
 # -----------------------------
+# Install Node 22 + npm + npx
+# -----------------------------
+RUN apt-get update && apt-get install -y curl \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y nodejs
+
+RUN node -v && npm -v && npx -v
+
+# -----------------------------
 # Expose FastAPI port only
 # -----------------------------
 EXPOSE 5002
