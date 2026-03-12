@@ -12,6 +12,7 @@
 # limitations under the License.
 # ========= Copyright 2025-2026 @ Eigent.ai All Rights Reserved. =========
 
+import asyncio
 import json
 import os
 from dataclasses import dataclass
@@ -161,8 +162,33 @@ class EphemeralGatewayMiddleware(BaseHTTPMiddleware):
             await self._backend.stop_project(project_key)
 
         if worker_resp.body_iter is not None:
+            # Wrap stream so we stop the project's worker when the client disconnects
+            # (Ctrl+C). Starlette cancels the consuming task; the inner generator's
+            # finally may not run, so we catch CancelledError here and cleanup.
+            stream = worker_resp.body_iter
+            backend = self._backend
+            pk = project_key
+
+            async def stream_with_disconnect_cleanup():
+                try:
+                    async for chunk in stream:
+                        yield chunk
+                except asyncio.CancelledError:
+                    if pk:
+                        try:
+                            await backend.stop_project(pk)
+                        except Exception:
+                            pass
+                    raise
+                finally:
+                    if pk:
+                        try:
+                            await backend.stop_project(pk)
+                        except Exception:
+                            pass
+
             return StreamingResponse(
-                worker_resp.body_iter,
+                stream_with_disconnect_cleanup(),
                 status_code=worker_resp.status_code,
                 headers=_sanitize_response_headers(worker_resp.headers, streaming=True),
                 media_type=worker_resp.media_type,
