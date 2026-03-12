@@ -253,17 +253,6 @@ class DockerEphemeralBackend:
             finally:
                 await resp.aclose()
                 await client.aclose()
-                # When the SSE/stream for POST /chat (or any routed call) breaks
-                # due to completion, timeout, or client disconnect, we stop the
-                # corresponding worker container.
-                try:
-                    if project_key is not None:
-                        await self.stop_project(project_key)
-                    else:
-                        await _docker_stop(container_name)
-                except Exception:
-                    # Best-effort cleanup; ignore failures.
-                    pass
 
         return WorkerResponse(
             status_code=resp.status_code,

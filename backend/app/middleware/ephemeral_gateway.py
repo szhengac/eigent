@@ -176,14 +176,14 @@ class EphemeralGatewayMiddleware(BaseHTTPMiddleware):
                 except asyncio.CancelledError:
                     if pk:
                         try:
-                            await backend.stop_project(pk)
+                            asyncio.create_task(backend.stop_project(pk))
                         except Exception:
                             pass
                     raise
                 finally:
                     if pk:
                         try:
-                            await backend.stop_project(pk)
+                            asyncio.create_task(backend.stop_project(pk))
                         except Exception:
                             pass
 
