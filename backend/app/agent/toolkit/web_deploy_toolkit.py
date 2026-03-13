@@ -29,11 +29,11 @@ class WebDeployToolkit(BaseWebDeployToolkit, AbstractToolkit):
         self,
         api_task_id: str,
         timeout: float | None = None,
-        add_branding_tag: bool = True,
+        add_branding_tag: bool = False,
         logo_path: str = "../../../../public/favicon.png",
-        tag_text: str = "Created by Eigent",
-        tag_url: str = "https://main.eigent.ai/",
-        remote_server_ip: str | None = "space.eigent.ai",
+        tag_text: str = "Created by Paxs",
+        tag_url: str = "https://www.paxs.ai/",
+        remote_server_ip: str | None = "https://www.space.paxs.ai/",
         remote_server_port: int = 8080,
     ):
         self.api_task_id = api_task_id
