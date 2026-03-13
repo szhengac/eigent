@@ -245,21 +245,38 @@ class DockerEphemeralBackend:
                 await _docker_stop(container_name)
             raise EphemeralBackendError(f"Error proxying request to docker worker: {e!s}") from e
 
-        async def stream_iter():
-            try:
-                async for chunk in resp.aiter_bytes():
-                    if chunk:
-                        yield chunk
-            finally:
-                await resp.aclose()
-                await client.aclose()
+        content_type = (resp.headers.get("content-type") or "").lower()
+        is_streaming = "text/event-stream" in content_type
 
-        return WorkerResponse(
-            status_code=resp.status_code,
-            headers=dict(resp.headers),
-            body_iter=stream_iter(),
-            media_type=resp.headers.get("content-type"),
-        )
+        if is_streaming:
+            async def stream_iter():
+                try:
+                    async for chunk in resp.aiter_bytes():
+                        if chunk:
+                            yield chunk
+                finally:
+                    await resp.aclose()
+                    await client.aclose()
+
+            return WorkerResponse(
+                status_code=resp.status_code,
+                headers=dict(resp.headers),
+                body_iter=stream_iter(),
+                media_type=resp.headers.get("content-type"),
+            )
+
+        # Non-streaming response: read full body and return body= so gateway returns Response, not StreamingResponse.
+        try:
+            body_bytes = await resp.aread()
+            return WorkerResponse(
+                status_code=resp.status_code,
+                headers=dict(resp.headers),
+                body=body_bytes,
+                media_type=resp.headers.get("content-type"),
+            )
+        finally:
+            await resp.aclose()
+            await client.aclose()
 
     async def stop_all(self) -> None:
         """
