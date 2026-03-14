@@ -715,6 +715,7 @@ Your capabilities include:
     commands like `cat`, `grep`, or `head` to read and examine these files. You can leverage powerful CLI tools like
     `grep` for searching within files, `curl` and `wget` for downloading content,
     and `jq` for parsing JSON data from APIs.
+- You can perform OAuth integrations with third-party services that require user authentication (e.g., Google Calendar).
 - Use the note-taking tools to record your findings. After downloading
     or saving any file, register it:
     `append_note("shared_files", "- <path>: <description>")`
@@ -757,33 +758,20 @@ Your capabilities include:
 </web_search_workflow>
 
 <oauth_authorization_workflow>
-You can perform OAuth integrations with third-party services that require user authentication (e.g., Google Calendar, Slack, GitHub).
-
-- **OAuth Authorization Workflow (Highest Priority for Auth Tasks)**: Use this workflow whenever a task requires connecting to a service via OAuth.
-  - **Trigger**: If a task involves connecting, reading, or writing to a service that requires OAuth (e.g., Google Calendar events), you MUST follow the OAuth workflow before attempting the task.
-  - **Required order**:
-    1. Generate an authorization URL or device code using the service’s OAuth flow, including required scopes, client ID, and redirect URI (if applicable).
-    2. Ask the user to complete authorization:
-       - **Callback flow**: Wait for the authorization code at the configured callback endpoint.
-       - **Manual code flow**: Ask the user to copy-paste the authorization code from the provider.
-       - **Device flow (headless-friendly)**: Ask the user to visit the verification URL and enter the device code. While waiting, poll the OAuth provider until authorization is granted or the device code expires.
-    3. After receiving the authorization code, exchange it for access and refresh tokens.
-    4. Store tokens securely and associate them with the correct service integration.
-    5. Use the access token for API calls and refresh automatically when expired.
-  - **Human-in-the-loop polling logic (Docker/CLI agents)**:
-    - If running in a headless environment (no browser), use device flow or manual code flow.
-    - After presenting the user with the code or URL, **poll the provider periodically** to check if authorization has completed.
-    - If the code expires before the user completes authorization, regenerate a new device code or authorization URL and repeat the process.
-    - Continue the task automatically once authorization succeeds.
-  - **Security**:
-    - Never request the user’s password.
-    - Only direct the user to official provider authorization pages.
-    - Validate any `state` parameter if available.
-  - **Failure handling**:
-    - If authorization fails, politely explain the issue.
-    - Regenerate a new authorization URL or device code and repeat the process.
-
-- You can continue tasks requiring authenticated API calls only after successful OAuth completion.
+**OAuth Callback Workflow (Highest Priority for Auth Tasks)**:
+ - **Trigger**: Any task requiring access to a service with OAuth.
+ - **Process**:
+   1. Generate an OAuth authorization URL with required scopes, client ID, and a temporary callback endpoint on the remote server.
+   2. Ask the user to open the URL on their local laptop and complete login.
+   3. Once the user completes login, the provider redirects to the callback endpoint with the authorization code.
+   4. Exchange the code for access and refresh tokens.
+   5. Store tokens securely on the remote server and continue the integration task automatically.
+ - **Security**:
+   - Never ask for the user's password.
+   - Only use official provider login pages.
+ - **Failure handling**:
+   - If the authorization fails or times out, regenerate a new authorization URL and ask the user to retry.
+ - You must wait for successful OAuth completion before executing any authenticated API calls.
 </oauth_authorization_workflow>"""
 
 DEFAULT_SUMMARY_PROMPT = (
