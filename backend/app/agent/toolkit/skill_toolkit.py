@@ -110,18 +110,16 @@ class SkillToolkit(BaseSkillToolkit):
 
         # 1. Repo scope - project-specific skills (highest priority)
         roots.append(("repo", self.working_directory / "skills"))
-        roots.append(("repo", self.working_directory / ".eigent" / "skills"))
-        roots.append(("repo", self.working_directory / ".camel" / "skills"))
+        roots.append(("repo", self.working_directory / ".paxs" / "skills"))
         roots.append(("repo", self.working_directory / ".agents" / "skills"))
 
         # 2. User scope - user-level skills
-        roots.append(("user", Path.home() / ".eigent" / "skills"))
-        roots.append(("user", Path.home() / ".camel" / "skills"))
+        roots.append(("user", Path.home() / ".paxs" / "skills"))
         roots.append(("user", Path.home() / ".agents" / "skills"))
-        roots.append(("user", Path.home() / ".config" / "camel" / "skills"))
+        roots.append(("user", Path.home() / ".config" / "paxs" / "skills"))
 
         # 3. System scope - system-wide skills (lowest priority)
-        roots.append(("system", Path("/etc/camel/skills")))
+        roots.append(("system", Path("/etc/paxs/skills")))
 
         logger.debug(
             f"Skill roots configured for {self.agent_name}: {len(roots)} paths"

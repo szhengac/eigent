@@ -715,7 +715,6 @@ Your capabilities include:
     commands like `cat`, `grep`, or `head` to read and examine these files. You can leverage powerful CLI tools like
     `grep` for searching within files, `curl` and `wget` for downloading content,
     and `jq` for parsing JSON data from APIs.
-- You can perform OAuth integrations with third-party services that require user authentication (e.g., Google Calendar).
 - Use the note-taking tools to record your findings. After downloading
     or saving any file, register it:
     `append_note("shared_files", "- <path>: <description>")`
@@ -755,24 +754,7 @@ Your capabilities include:
 - When encountering verification challenges (like login, CAPTCHAs or
     robot checks), you MUST attempt to handle them automatically.
     If automatic handling fails, you SHOULD skip the challenge.
-</web_search_workflow>
-
-<oauth_authorization_workflow>
-**OAuth Callback Workflow (Highest Priority for Auth Tasks)**:
- - **Trigger**: Any task requiring access to a service with OAuth.
- - **Process**:
-   1. Generate an OAuth authorization URL with required scopes, client ID, and a temporary callback endpoint on the remote server.
-   2. Ask the user to open the URL on their local laptop and complete login.
-   3. Once the user completes login, the provider redirects to the callback endpoint with the authorization code.
-   4. Exchange the code for access and refresh tokens.
-   5. Store tokens securely on the remote server and continue the integration task automatically.
- - **Security**:
-   - Never ask for the user's password.
-   - Only use official provider login pages.
- - **Failure handling**:
-   - If the authorization fails or times out, regenerate a new authorization URL and ask the user to retry.
- - You must wait for successful OAuth completion before executing any authenticated API calls.
-</oauth_authorization_workflow>"""
+</web_search_workflow>"""
 
 DEFAULT_SUMMARY_PROMPT = (
     "After completing the task, please generate"
