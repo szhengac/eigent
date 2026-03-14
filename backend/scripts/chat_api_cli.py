@@ -14,7 +14,7 @@
 # ========= Copyright 2025-2026 @ Eigent.ai All Rights Reserved. =========
 
 """
-Simple interactive CLI for Eigent backend chat API (port 5002 by default).
+Simple interactive CLI for Paxs Super Agent backend chat API (port 5002 by default).
 
 Features:
 - Start chat (task starts automatically): POST /chat (SSE stream)
@@ -84,7 +84,7 @@ class PendingAsk:
     question: str
 
 
-class EigentChatCli:
+class PaxsChatCli:
     def __init__(
         self,
         base_url: str,
@@ -141,7 +141,7 @@ class EigentChatCli:
         self._sse_thread = threading.Thread(
             target=self._run_sse_stream,
             args=(chat_payload,),
-            name="eigent-sse",
+            name="paxs-sse",
             daemon=True,
         )
         self._sse_thread.start()
@@ -202,10 +202,10 @@ class EigentChatCli:
 
         self.download_dir.mkdir(parents=True, exist_ok=True)
 
-        # Try to preserve a useful relative structure under ~/eigent/...
+        # Try to preserve a useful relative structure under ~/paxs/...
         home = Path.home()
-        eigent_root = home / "eigent"
-        rel = _safe_relativize(src, eigent_root)
+        paxs_root = home / "paxs"
+        rel = _safe_relativize(src, paxs_root)
         if rel is None:
             rel = Path(src.name)
 
@@ -358,7 +358,7 @@ class EigentChatCli:
                 except Exception as e:
                     _print(f"[{_now()}] render error: {e}")
 
-        renderer = threading.Thread(target=_render_loop, name="eigent-render", daemon=True)
+        renderer = threading.Thread(target=_render_loop, name="paxs-render", daemon=True)
         renderer.start()
 
         try:
@@ -477,9 +477,9 @@ def build_chat_payload(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Interactive CLI for Eigent backend /chat SSE API")
+    parser = argparse.ArgumentParser(description="Interactive CLI for Paxs Super Agent backend /chat SSE API")
     parser.add_argument("--base-url", default="http://localhost:5002", help="Backend base URL (default: http://localhost:5002)")
-    parser.add_argument("--download-dir", default="./eigent_downloads", help="Where to copy files from write_file events")
+    parser.add_argument("--download-dir", default="./paxs_downloads", help="Where to copy files from write_file events")
     parser.add_argument("--verbose", action="store_true", help="Print verbose SSE events")
 
     parser.add_argument("--project-id", default=None, help="Project ID (defaults to random)")
@@ -487,8 +487,8 @@ def main() -> int:
     parser.add_argument("--question", required=True, help="Initial user question")
     parser.add_argument("--email", required=True, help="User email (used for file save path on backend)")
 
-    parser.add_argument("--model-platform", default=os.getenv("EIGENT_MODEL_PLATFORM", "openai-compatible-model"))
-    parser.add_argument("--model-type", default=os.getenv("EIGENT_MODEL_TYPE", "gpt-4o-mini"))
+    parser.add_argument("--model-platform", default=os.getenv("PAXS_MODEL_PLATFORM", "openai-compatible-model"))
+    parser.add_argument("--model-type", default=os.getenv("PAXS_MODEL_TYPE", "gpt-4o-mini"))
     parser.add_argument("--api-key", default=os.getenv("OPENAI_API_KEY"), help="Model API key (defaults to OPENAI_API_KEY)")
     parser.add_argument("--api-url", default=os.getenv("OPENAI_API_BASE_URL"), help="Model API base URL")
     parser.add_argument("--language", default="en")
@@ -507,7 +507,7 @@ def main() -> int:
         return 2
 
     download_dir = Path(args.download_dir).expanduser()
-    cli = EigentChatCli(base_url=args.base_url, download_dir=download_dir, verbose=args.verbose)
+    cli = PaxsChatCli(base_url=args.base_url, download_dir=download_dir, verbose=args.verbose)
 
     payload = build_chat_payload(args)
     cli.project_id = payload["project_id"]

@@ -1,7 +1,7 @@
 
 # Agent Module
 
-This module provides the agent infrastructure for eigent, built on top of the CAMEL framework.
+This module provides the agent infrastructure for paxs super agent, built on top of the CAMEL and Eigent framework.
 
 ## Architecture Overview
 

@@ -44,8 +44,8 @@ class TestWorkforce:
         assert workforce.api_task_id == api_task_id
         assert workforce.description == description
 
-    def test_eigent_make_sub_tasks_success(self):
-        """Test eigent_make_sub_tasks successfully decomposes task."""
+    def test_paxs_make_sub_tasks_success(self):
+        """Test paxs_make_sub_tasks successfully decomposes task."""
         api_task_id = "test_api_task_123"
         workforce = Workforce(
             api_task_id=api_task_id,
@@ -65,7 +65,7 @@ class TestWorkforce:
              patch.object(workforce, '_decompose_task', return_value=mock_subtasks), \
              patch('app.utils.workforce.validate_task_content', return_value=True):
             
-            result = workforce.eigent_make_sub_tasks(task)
+            result = workforce.paxs_make_sub_tasks(task)
             
             assert result == mock_subtasks
             assert workforce._task is task
@@ -73,8 +73,8 @@ class TestWorkforce:
             assert task.state == TaskState.OPEN
             assert task in workforce._pending_tasks
 
-    def test_eigent_make_sub_tasks_with_streaming_decomposition(self):
-        """Test eigent_make_sub_tasks with streaming decomposition result."""
+    def test_paxs_make_sub_tasks_with_streaming_decomposition(self):
+        """Test paxs_make_sub_tasks with streaming decomposition result."""
         api_task_id = "test_api_task_123"
         workforce = Workforce(
             api_task_id=api_task_id,
@@ -94,7 +94,7 @@ class TestWorkforce:
              patch.object(workforce, '_decompose_task', return_value=mock_streaming_decomposition()), \
              patch('app.utils.workforce.validate_task_content', return_value=True):
             
-            result = workforce.eigent_make_sub_tasks(task)
+            result = workforce.paxs_make_sub_tasks(task)
             
             # Should have flattened all streaming results
             assert len(result) == 3
@@ -103,8 +103,8 @@ class TestWorkforce:
             assert result[1].content == "Phase 2"
             assert result[2].content == "Phase 3"
 
-    def test_eigent_make_sub_tasks_invalid_content(self):
-        """Test eigent_make_sub_tasks with invalid task content."""
+    def test_paxs_make_sub_tasks_invalid_content(self):
+        """Test paxs_make_sub_tasks with invalid task content."""
         api_task_id = "test_api_task_123"
         workforce = Workforce(
             api_task_id=api_task_id,
@@ -116,15 +116,15 @@ class TestWorkforce:
         
         with patch('app.utils.workforce.validate_task_content', return_value=False):
             with pytest.raises(UserException):
-                workforce.eigent_make_sub_tasks(task)
+                workforce.paxs_make_sub_tasks(task)
             
             # Task should be marked as failed
             assert task.state == TaskState.FAILED
             assert "Invalid or empty content" in task.result
 
     @pytest.mark.asyncio
-    async def test_eigent_start_success(self):
-        """Test eigent_start successfully starts workforce."""
+    async def test_paxs_start_success(self):
+        """Test paxs_start successfully starts workforce."""
         api_task_id = "test_api_task_123"
         workforce = Workforce(
             api_task_id=api_task_id,
@@ -140,7 +140,7 @@ class TestWorkforce:
         with patch.object(workforce, 'start', new_callable=AsyncMock) as mock_start, \
              patch.object(workforce, 'save_snapshot') as mock_save_snapshot:
             
-            await workforce.eigent_start(subtasks)
+            await workforce.paxs_start(subtasks)
             
             # Should add subtasks to pending tasks
             assert len(workforce._pending_tasks) >= len(subtasks)
@@ -150,8 +150,8 @@ class TestWorkforce:
             mock_start.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_eigent_start_with_exception(self):
-        """Test eigent_start handles exceptions properly."""
+    async def test_paxs_start_with_exception(self):
+        """Test paxs_start handles exceptions properly."""
         api_task_id = "test_api_task_123"
         workforce = Workforce(
             api_task_id=api_task_id,
@@ -164,7 +164,7 @@ class TestWorkforce:
              patch.object(workforce, 'save_snapshot'):
             
             with pytest.raises(Exception, match="Workforce start failed"):
-                await workforce.eigent_start(subtasks)
+                await workforce.paxs_start(subtasks)
             
             # State should be set to STOPPED on exception
             assert workforce._state == WorkforceState.STOPPED
@@ -428,11 +428,11 @@ class TestWorkforceIntegration:
              patch.object(workforce, 'start', new_callable=AsyncMock):
             
             # Make subtasks
-            result_subtasks = workforce.eigent_make_sub_tasks(main_task)
+            result_subtasks = workforce.paxs_make_sub_tasks(main_task)
             assert len(result_subtasks) == 3
             
             # Start workforce
-            await workforce.eigent_start(result_subtasks)
+            await workforce.paxs_start(result_subtasks)
             
             # Add worker
             mock_worker = MagicMock(spec=ListenChatAgent)
@@ -541,8 +541,8 @@ class TestWorkforceWithLLM:
 class TestWorkforceErrorCases:
     """Test error cases and edge conditions for Workforce."""
     
-    def test_eigent_make_sub_tasks_with_none_task(self):
-        """Test eigent_make_sub_tasks with None task."""
+    def test_paxs_make_sub_tasks_with_none_task(self):
+        """Test paxs_make_sub_tasks with None task."""
         api_task_id = "error_test_123"
         workforce = Workforce(
             api_task_id=api_task_id,
@@ -550,10 +550,10 @@ class TestWorkforceErrorCases:
         )
         
         with pytest.raises((AttributeError, TypeError)):
-            workforce.eigent_make_sub_tasks(None)
+            workforce.paxs_make_sub_tasks(None)
 
-    def test_eigent_make_sub_tasks_with_malformed_task(self):
-        """Test eigent_make_sub_tasks with malformed task object."""
+    def test_paxs_make_sub_tasks_with_malformed_task(self):
+        """Test paxs_make_sub_tasks with malformed task object."""
         api_task_id = "error_test_123"
         workforce = Workforce(
             api_task_id=api_task_id,
@@ -567,11 +567,11 @@ class TestWorkforceErrorCases:
         
         with patch('app.utils.workforce.validate_task_content', return_value=False):
             with pytest.raises(UserException):
-                workforce.eigent_make_sub_tasks(fake_task)
+                workforce.paxs_make_sub_tasks(fake_task)
 
     @pytest.mark.asyncio
-    async def test_eigent_start_with_empty_subtasks(self):
-        """Test eigent_start with empty subtasks list."""
+    async def test_paxs_start_with_empty_subtasks(self):
+        """Test paxs_start with empty subtasks list."""
         api_task_id = "empty_test_123"
         workforce = Workforce(
             api_task_id=api_task_id,
@@ -582,7 +582,7 @@ class TestWorkforceErrorCases:
              patch.object(workforce, 'save_snapshot'):
             
             # Should handle empty subtasks gracefully
-            await workforce.eigent_start([])
+            await workforce.paxs_start([])
             
             # Should still call start method
             workforce.start.assert_called_once()

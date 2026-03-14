@@ -67,7 +67,7 @@ class RAGToolkit(AbstractToolkit):
         """Initialize RAGToolkit with configurable storage.
 
         Args:
-            api_task_id (str): Task ID for eigent integration.
+            api_task_id (str): Task ID for paxs integration.
             agent_name (str | None): Optional agent name override.
             api_key (str | None): API key for the embedding model.
             collection_name (str | None): Name for the vector collection.
@@ -356,7 +356,7 @@ class RAGToolkit(AbstractToolkit):
         """Return tools that can be used based on available configuration.
 
         Args:
-            api_task_id (str): Task ID for eigent integration.
+            api_task_id (str): Task ID for paxs integration.
         """
         # Auto-derive collection name for task isolation
         collection_name = f"task_{api_task_id}"

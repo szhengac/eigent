@@ -16,7 +16,7 @@
 Skill Toolkit with multi-tier hierarchy:
 
 Agent access control is managed via skills-config.json.
-User isolation is managed via ~/.eigent/<user_id>/skills-config.json.
+User isolation is managed via ~/.paxs/<user_id>/skills-config.json.
 """
 
 import logging
@@ -40,18 +40,18 @@ class SkillEntryConfig(TypedDict, total=False):
 
 
 class SkillToolkit(BaseSkillToolkit):
-    """Enhanced SkillToolkit with Eigent-specific features.
+    """Enhanced SkillToolkit with Paxs-specific features.
 
     Extends CAMEL's SkillToolkit with:
-    - Eigent-specific skill paths (.eigent/skills)
+    - Paxs-specific skill paths (.paxs/skills)
     - Dynamic skill discovery: skills are rescanned on every access so that
       newly installed skills (e.g. created by the agent during the task)
       are visible without restarting.
 
     Skill Discovery Priority (highest to lowest):
-    1. Repo scope: <wd>/skills, <wd>/.eigent/skills, <wd>/.camel/skills
-    2. User scope: ~/.eigent/skills, ~/.camel/skills, ~/.config/camel/skills
-    3. System scope: /etc/camel/skills
+    1. Repo scope: <wd>/skills, <wd>/.paxs/skills, <wd>/.agents/skills
+    2. User scope: ~/.paxs/skills, ~/.agents/skills, ~/.config/paxs/skills
+    3. System scope: /etc/paxs/skills
     """
 
     @classmethod
@@ -75,7 +75,7 @@ class SkillToolkit(BaseSkillToolkit):
         working_directory: str | None = None,
         timeout: float | None = None,
     ) -> None:
-        """Initialize SkillToolkit with Eigent-specific context.
+        """Initialize SkillToolkit with Paxs-specific context.
 
         Args:
             api_task_id: Task/project identifier for logging
@@ -95,9 +95,9 @@ class SkillToolkit(BaseSkillToolkit):
         )
 
     def _skill_roots(self) -> list[tuple[str, Path]]:
-        """Return skill roots with Eigent + CAMEL paths.
+        """Return skill roots with Paxs + agents paths.
 
-        Integrates Eigent-specific paths with CAMEL standard paths.
+        Integrates Paxs-specific paths with agents standard paths.
         Priority order (highest to lowest):
         1. Repo scope: project-specific skills
         2. User scope: user-level skills

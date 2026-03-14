@@ -151,7 +151,7 @@ class HybridBrowserPythonToolkit(BaseHybridBrowserToolkit, AbstractToolkit):
         headless: bool = False,
         user_data_dir: str | None = None,
         stealth: bool = False,
-        cache_dir: str = os.path.expanduser("~/.eigent/tmp/"),
+        cache_dir: str = os.path.expanduser("~/.paxs/tmp/"),
         enabled_tools: List[str] | None = None,
         browser_log_to_file: bool = False,
         session_id: str | None = None,

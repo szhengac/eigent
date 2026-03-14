@@ -48,7 +48,7 @@ os.environ["PYTHONIOENCODING"] = "utf-8"
 app_logger = logging.getLogger("main")
 
 # Log application startup
-app_logger.info("Starting Eigent Multi-Agent System API")
+app_logger.info("Starting Paxs Super Agent Multi-Agent System API")
 app_logger.info(f"Python encoding: {os.environ.get('PYTHONIOENCODING')}")
 app_logger.info(f"Environment: {os.environ.get('ENVIRONMENT', 'development')}")
 
