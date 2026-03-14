@@ -111,8 +111,8 @@ class Chat(BaseModel):
 
     def file_save_path(self, path: str | None = None):
         # Server-owned data directory root
-        # Operator can override with EIGENT_DATA_DIR (recommended for deployments).
-        base = os.getenv("EIGENT_DATA_DIR") or str(Path.home() / "sandbox")
+        # Operator can override with PAXS_DATA_DIR (recommended for deployments).
+        base = os.getenv("PAXS_DATA_DIR") or str(Path.home() / "sandbox")
         # Project-based structure (no user-specific component)
         save_path = Path(base) / "projects" / f"project_{self.project_id}" / f"task_{self.task_id}"
         if path is not None:

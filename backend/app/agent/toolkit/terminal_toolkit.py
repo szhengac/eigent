@@ -41,7 +41,7 @@ def get_terminal_base_venv_path() -> str:
     """Get the path to the terminal base venv created during app installation."""
     return os.path.join(
         os.path.expanduser("~"),
-        ".eigent",
+        ".paxs",
         "venvs",
         f"terminal_base-{APP_VERSION}"
     )
@@ -71,7 +71,7 @@ class TerminalToolkit(BaseTerminalToolkit, AbstractToolkit):
             self.agent_name = agent_name
 
         if working_directory is None:
-            working_directory = env("EIGENT_TERMINAL_DIR", os.path.expanduser("~/.eigent/terminal/"))
+            working_directory = env("PAXS_TERMINAL_DIR", os.path.expanduser("~/.paxs/terminal/"))
         self._agent_venv_dir = os.path.join(working_directory, self.agent_name)
 
         logger.debug(f"Initializing TerminalToolkit for agent={self.agent_name}", extra={

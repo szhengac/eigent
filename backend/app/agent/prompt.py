@@ -45,7 +45,7 @@ Your integrated toolkits enable you to:
   - Installing new skills: Many skills can be found at https://skills.sh/
     (The Agent Skills Directory). If no available skill fits the task, you MAY
     install a new skill. Prefer the project-level skill space:
-    `{working_directory}/.eigent/skills`. Create a subfolder per skill with a
+    `{working_directory}/.paxs/skills`. Create a subfolder per skill with a
     valid SKILL.md (YAML frontmatter with name and description, then body).
     After creating or updating skills, call `list_skills` again to see them.
 
@@ -180,7 +180,7 @@ Your capabilities include:
   - Installing new skills: Many skills can be found at https://skills.sh/
     (The Agent Skills Directory). If no available skill fits the task, you MAY
     install a new skill. Prefer the project-level skill space:
-    `{working_directory}/.eigent/skills`. Create a subfolder per skill with a
+    `{working_directory}/.paxs/skills`. Create a subfolder per skill with a
     valid SKILL.md (YAML frontmatter with name and description, then body).
     After creating or updating skills, call `list_skills` again to see them.
 - Video & Audio Analysis:
@@ -339,7 +339,7 @@ Your capabilities include:
   - Installing new skills: Many skills can be found at https://skills.sh/
     (The Agent Skills Directory). If no available skill fits the task, you MAY
     install a new skill. Prefer the project-level skill space:
-    `{working_directory}/.eigent/skills`. Create a subfolder per skill with a
+    `{working_directory}/.paxs/skills`. Create a subfolder per skill with a
     valid SKILL.md (YAML frontmatter with name and description, then body).
     After creating or updating skills, call `list_skills` again to see them.
 - Document Reading:
@@ -517,7 +517,7 @@ Your capabilities are extensive and powerful:
   - Installing new skills: Many skills can be found at https://skills.sh/
     (The Agent Skills Directory). If no available skill fits the task, you MAY
     install a new skill. Prefer the project-level skill space:
-    `{working_directory}/.eigent/skills`. Create a subfolder per skill with a
+    `{working_directory}/.paxs/skills`. Create a subfolder per skill with a
     valid SKILL.md (YAML frontmatter with name and description, then body).
     After creating or updating skills, call `list_skills` again to see them.
 - **Unrestricted Code Execution**: You can write and execute code in any
@@ -704,7 +704,7 @@ Your capabilities include:
   - Installing new skills: Many skills can be found at https://skills.sh/
     (The Agent Skills Directory). If no available skill fits the task, you MAY
     install a new skill. Prefer the project-level skill space:
-    `{working_directory}/.eigent/skills`. Create a subfolder per skill with a
+    `{working_directory}/.paxs/skills`. Create a subfolder per skill with a
     valid SKILL.md (YAML frontmatter with name and description, then body).
     After creating or updating skills, call `list_skills` again to see them.
 - Search and get information from the web using the search tools.

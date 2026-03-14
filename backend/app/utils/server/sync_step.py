@@ -18,8 +18,8 @@ Cloud sync step decorator.
 Syncs SSE step data to cloud server when SERVER_URL is configured.
 High-frequency events (decompose_text) are batched to reduce API calls.
 
-Config (~/.eigent/.env):
-    SERVER_URL=https://dev.eigent.ai/api
+Config (~/.paxs/.env):
+    SERVER_URL=https://dev.paxs.ai/api
 """
 
 import asyncio

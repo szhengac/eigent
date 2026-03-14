@@ -95,14 +95,14 @@ def write_content_to_project(
     """
     Decode base64-encoded file content and save to the project path (from Chat.file_save_path).
     User sends base64 string under key "credentials" or "token"; we decode and write to
-    {project_path}/.eigent_credentials/{tool_name}_{filename_suffix}.
+    {project_path}/.paxs_credentials/{tool_name}_{filename_suffix}.
     """
     base_path = _get_project_save_path(api_task_id)
     try:
         content = base64.b64decode(content_base64, validate=True)
     except Exception as e:
         raise ValueError(f"Invalid base64 content: {e}") from e
-    cred_dir = base_path / ".eigent_credentials"
+    cred_dir = base_path / ".paxs_credentials"
     cred_dir.mkdir(parents=True, exist_ok=True)
     path = cred_dir / f"{tool_name}_{filename_suffix}"
     path.write_bytes(content)
@@ -114,14 +114,14 @@ def write_config_folder_to_project(api_task_id: str, tool_name: str, config_base
     """
     Decode base64-encoded zip of a folder and extract to project path (from Chat.file_save_path).
     User zips the entire config folder, base64-encodes it, and sends under key "config";
-    we decode, unzip to {project_path}/.eigent_credentials/{tool_name}_config/, return that dir path.
+    we decode, unzip to {project_path}/.paxs_credentials/{tool_name}_config/, return that dir path.
     """
     base_path = _get_project_save_path(api_task_id)
     try:
         zip_bytes = base64.b64decode(config_base64, validate=True)
     except Exception as e:
         raise ValueError(f"Invalid base64 config: {e}") from e
-    cred_dir = base_path / ".eigent_credentials"
+    cred_dir = base_path / ".paxs_credentials"
     cred_dir.mkdir(parents=True, exist_ok=True)
     extract_dir = cred_dir / f"{tool_name}_config"
     if extract_dir.exists():

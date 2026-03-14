@@ -13,7 +13,7 @@
 # ========= Copyright 2025-2026 @ Eigent.ai All Rights Reserved. =========
 
 """
-Centralized router registration for the Eigent API.
+Centralized router registration for the Paxs Super Agent API.
 All routers are explicitly registered here for better visibility and maintainability.
 """
 from fastapi import FastAPI

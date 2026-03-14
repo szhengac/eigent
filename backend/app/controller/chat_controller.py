@@ -134,12 +134,9 @@ async def post(data: Chat, request: Request):
     # Server mode: requests must not mutate process-wide environment or load user-provided env files.
     # Derive per-project/task paths from server-owned data dir.
     task_root = Path(data.file_save_path())
-    camel_log = task_root / "camel_logs"
-    camel_log.mkdir(parents=True, exist_ok=True)
 
     # Store paths on task_lock from Chat.file_save_path (do not use os.environ)
     task_lock.file_save_path = data.file_save_path()
-    task_lock.camel_log_dir = camel_log
 
     # Copy Chat.creds_params onto task_lock for toolkits
     task_lock.creds_params = data.creds_params or {}
@@ -170,7 +167,7 @@ async def post(data: Chat, request: Request):
 
     chat_logger.info(
         "Chat session initialized",
-        extra={"project_id": data.project_id, "task_id": data.task_id, "log_dir": str(camel_log)},
+        extra={"project_id": data.project_id, "task_id": data.task_id},
     )
     return StreamingResponse(
         timeout_stream_wrapper(step_solve(data, request, task_lock), task_lock=task_lock), media_type="text/event-stream"
@@ -209,7 +206,7 @@ def improve(id: str, data: SupplementChat):
         try:
             if id:
                 # Derive from server-owned data directory (same as Chat.file_save_path()).
-                base = os.getenv("EIGENT_DATA_DIR") or str(Path.home() / "sandbox")
+                base = os.getenv("PAXS_DATA_DIR") or str(Path.home() / "sandbox")
                 new_folder_path = Path(base) / "projects" / f"project_{id}" / f"task_{data.task_id}"
                 new_folder_path.mkdir(parents=True, exist_ok=True)
                 chat_logger.info(f"Updated working directory to: {new_folder_path}")

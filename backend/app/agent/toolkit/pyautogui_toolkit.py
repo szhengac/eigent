@@ -33,6 +33,6 @@ class PyAutoGUIToolkit(BasePyAutoGUIToolkit, AbstractToolkit):
         screenshots_dir: str | None = None,
     ):
         if screenshots_dir is None:
-            screenshots_dir = env("EIGENT_DATA_DIR", os.path.expanduser("~/.eigent/server_data"))
+            screenshots_dir = env("PAXS_DATA_DIR", os.path.expanduser("~/.paxs/server_data"))
         super().__init__(timeout, screenshots_dir)
         self.api_task_id = api_task_id

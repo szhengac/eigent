@@ -480,7 +480,7 @@ async def step_solve(options: Chat, request: Request, task_lock: TaskLock):
                         nonlocal camel_task, summary_task_content
                         try:
                             sub_tasks = await asyncio.to_thread(
-                                workforce.eigent_make_sub_tasks,
+                                workforce.paxs_make_sub_tasks,
                                 camel_task,
                                 context_for_coordinator,
                                 on_stream_batch,
@@ -551,7 +551,7 @@ async def step_solve(options: Chat, request: Request, task_lock: TaskLock):
                 update_sub_tasks(camel_task.subtasks, update_tasks)
                 # Add new tasks (with empty id) to both camel_task and sub_tasks
                 new_tasks = add_sub_tasks(camel_task, item.data.task)
-                # Also add new tasks to sub_tasks so workforce.eigent_start uses correct list
+                # Also add new tasks to sub_tasks so workforce.paxs_start uses correct list
                 sub_tasks.extend(new_tasks)
                 # Save updated sub_tasks back to task_lock so Action.start uses the correct list
                 setattr(task_lock, "decompose_sub_tasks", sub_tasks)
@@ -677,7 +677,7 @@ async def step_solve(options: Chat, request: Request, task_lock: TaskLock):
                 task_lock.status = Status.processing
                 if not sub_tasks:
                     sub_tasks = getattr(task_lock, "decompose_sub_tasks", [])
-                task = asyncio.create_task(workforce.eigent_start(sub_tasks))
+                task = asyncio.create_task(workforce.paxs_start(sub_tasks))
                 task_lock.add_background_task(task)
             elif item.action == Action.task_state:
                 # Track completed task results for the end event
@@ -1031,7 +1031,7 @@ async def step_solve(options: Chat, request: Request, task_lock: TaskLock):
                         )
                     )
                     if workforce is not None:
-                        task = asyncio.create_task(workforce.eigent_start(camel_task.subtasks))
+                        task = asyncio.create_task(workforce.paxs_start(camel_task.subtasks))
                         task_lock.add_background_task(task)
             elif item.action == Action.budget_not_enough:
                 if workforce is not None:
@@ -1375,7 +1375,7 @@ The current date is {datetime.date.today()}. For any date-related tasks, you MUS
   - Trigger: If a task explicitly references a skill with double curly braces (e.g., {{pdf}} or {{data-analyzer}}), or clearly matches a skill domain, you MUST use the skill workflow first.
   - Required order: 1) Call `list_skills` to confirm exact available skill names. 2) Call `load_skill` for the best matching skill before domain work. 3) Follow the loaded skill as the primary plan.
   - Do not rely on memory for skill details; always use loaded content.
-  - Installing new skills: Many skills can be found at https://skills.sh/ (The Agent Skills Directory). If no available skill fits the task, you MAY install a new skill. Prefer the project-level skill space: `{working_directory}/.eigent/skills`. Create a subfolder per skill with a valid SKILL.md (YAML frontmatter with name and description, then body). After creating or updating skills, call `list_skills` again to see them.
+  - Installing new skills: Many skills can be found at https://skills.sh/ (The Agent Skills Directory). If no available skill fits the task, you MAY install a new skill. Prefer the project-level skill space: `{working_directory}/.paxs/skills`. Create a subfolder per skill with a valid SKILL.md (YAML frontmatter with name and description, then body). After creating or updating skills, call `list_skills` again to see them.
         """,
             options,
             [

@@ -47,33 +47,33 @@ ENV_OTEL_EXPORTER_OTLP_HEADERS = "OTEL_EXPORTER_OTLP_HEADERS"
 
 # Default values
 DEFAULT_LANGFUSE_BASE_URL = "https://us.cloud.langfuse.com"
-DEFAULT_LANGFUSE_TAGS = ["workforce", "camel", "eigent"]
+DEFAULT_LANGFUSE_TAGS = ["workforce", "paxs", "super-agent"]
 LANGFUSE_OTEL_PATH = "/api/public/otel"
 
-# Attribute keys for eigent.project namespace
-ATTR_PROJECT_ID = "eigent.project.id"
+# Attribute keys for paxs.project namespace
+ATTR_PROJECT_ID = "paxs.project.id"
 
-# Attribute keys for eigent.task namespace
-ATTR_TASK_ID = "eigent.task.id"
-ATTR_TASK_DESCRIPTION = "eigent.task.description"
-ATTR_TASK_PARENT_ID = "eigent.task.parent_id"
-ATTR_TASK_TYPE = "eigent.task.type"
-ATTR_TASK_UPDATE_TYPE = "eigent.task.update_type"
-ATTR_TASK_STATUS = "eigent.task.status"
-ATTR_TASK_OLD_VALUE = "eigent.task.old_value"
-ATTR_TASK_NEW_VALUE = "eigent.task.new_value"
-ATTR_TASK_QUEUE_TIME_SECONDS = "eigent.task.queue_time_seconds"
-ATTR_TASK_PROCESSING_TIME_SECONDS = "eigent.task.processing_time_seconds"
-ATTR_TASK_QUALITY_SCORE = "eigent.task.quality_score"
-ATTR_TASK_TIMESTAMP = "eigent.task.timestamp"
-ATTR_TASK_DEPENDENCIES = "eigent.task.dependencies"
+# Attribute keys for paxs.task namespace
+ATTR_TASK_ID = "paxs.task.id"
+ATTR_TASK_DESCRIPTION = "paxs.task.description"
+ATTR_TASK_PARENT_ID = "paxs.task.parent_id"
+ATTR_TASK_TYPE = "paxs.task.type"
+ATTR_TASK_UPDATE_TYPE = "paxs.task.update_type"
+ATTR_TASK_STATUS = "paxs.task.status"
+ATTR_TASK_OLD_VALUE = "paxs.task.old_value"
+ATTR_TASK_NEW_VALUE = "paxs.task.new_value"
+ATTR_TASK_QUEUE_TIME_SECONDS = "paxs.task.queue_time_seconds"
+ATTR_TASK_PROCESSING_TIME_SECONDS = "paxs.task.processing_time_seconds"
+ATTR_TASK_QUALITY_SCORE = "paxs.task.quality_score"
+ATTR_TASK_TIMESTAMP = "paxs.task.timestamp"
+ATTR_TASK_DEPENDENCIES = "paxs.task.dependencies"
 
-# Attribute keys for eigent.worker namespace
-ATTR_WORKER_ID = "eigent.worker.id"
-ATTR_WORKER_TYPE = "eigent.worker.type"
-ATTR_WORKER_ROLE = "eigent.worker.role"
-ATTR_WORKER_AGENT = "eigent.worker.agent"
-ATTR_WORKER_MODEL_TYPE = "eigent.worker.model.type"
+# Attribute keys for paxs.worker namespace
+ATTR_WORKER_ID = "paxs.worker.id"
+ATTR_WORKER_TYPE = "paxs.worker.type"
+ATTR_WORKER_ROLE = "paxs.worker.role"
+ATTR_WORKER_AGENT = "paxs.worker.agent"
+ATTR_WORKER_MODEL_TYPE = "paxs.worker.model.type"
 
 # Attribute keys for workforce namespace
 ATTR_WORKFORCE_TOTAL_TASKS = "workforce.total_tasks"
@@ -83,8 +83,8 @@ ATTR_LANGFUSE_SESSION_ID = "langfuse.session.id"
 ATTR_LANGFUSE_TAGS = "langfuse.tags"
 
 # OpenTelemetry service and tracer names
-SERVICE_NAME_WORKFORCE = "eigent-workforce"
-TRACER_NAME_WORKFORCE = "eigent.workforce"
+SERVICE_NAME_WORKFORCE = "paxs-workforce"
+TRACER_NAME_WORKFORCE = "paxs.workforce"
 
 # Span names
 SPAN_WORKFORCE_EXECUTION = "workforce.execution"
@@ -288,7 +288,7 @@ class WorkforceMetricsCallback(WorkforceMetrics):
         ctx = trace.set_span_in_context(self.root_span)
         with self.tracer.start_as_current_span(SPAN_WORKER_CREATED,
                                                context=ctx) as span:
-            # Eigent-specific attributes
+            # Paxs-specific attributes
             span.set_attribute(ATTR_WORKER_ID, event.worker_id)
             span.set_attribute(ATTR_WORKER_TYPE, event.worker_type)
             span.set_attribute(ATTR_WORKER_ROLE, event.role)
@@ -395,7 +395,7 @@ class WorkforceMetricsCallback(WorkforceMetrics):
                 span.set_attribute(ATTR_TASK_NEW_VALUE, event.new_value)
             if event.metadata:
                 for key, value in event.metadata.items():
-                    span.set_attribute(f"eigent.task.metadata.{key}", value)
+                    span.set_attribute(f"paxs.task.metadata.{key}", value)
 
     def log_task_completed(self, event: TaskCompletedEvent) -> None:
         """Log task completion and end the execution span.
@@ -441,7 +441,7 @@ class WorkforceMetricsCallback(WorkforceMetrics):
             if event.token_usage:
                 # Store all token usage as custom attributes
                 for key, value in event.token_usage.items():
-                    span.set_attribute(f"eigent.task.token_usage.{key}", value)
+                    span.set_attribute(f"paxs.task.token_usage.{key}", value)
 
             span.set_status(Status(StatusCode.OK))
             span.end()

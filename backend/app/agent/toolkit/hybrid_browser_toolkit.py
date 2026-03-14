@@ -468,7 +468,7 @@ class HybridBrowserToolkit(BaseHybridBrowserToolkit, AbstractToolkit):
         if user_data_dir is None:
             # Use browser port to determine profile directory; base under working directory
             browser_port = env('browser_port', '9222')
-            base = working_directory if working_directory else os.path.expanduser("~/.eigent/browser_profiles")
+            base = working_directory if working_directory else os.path.expanduser("~/.paxs/browser_profiles")
             user_data_base = os.path.join(base, ".browser_profiles")
             user_data_dir = os.path.join(user_data_base, f"profile_{browser_port}")
             os.makedirs(user_data_dir, exist_ok=True)

@@ -291,14 +291,14 @@ class Agents(str, Enum):
 
 
 def cleanup_project_credentials(api_task_id: str) -> None:
-    """Remove .eigent_credentials directory for the project. Call when chat/task ends."""
+    """Remove .paxs_credentials directory for the project. Call when chat/task ends."""
     task_lock = get_task_lock_if_exists(api_task_id)
     if not task_lock:
         return
     path = getattr(task_lock, "file_save_path", None)
     if not path:
         return
-    cred_dir = Path(path) / ".eigent_credentials"
+    cred_dir = Path(path) / ".paxs_credentials"
     if not cred_dir.is_dir():
         return
     try:

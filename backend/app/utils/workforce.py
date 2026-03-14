@@ -104,15 +104,15 @@ Do not assume success based only on the response text. Validate the actual files
         logger.info(
             f"[WF-LIFECYCLE] ✅ Workforce.__init__ COMPLETED, id={id(self)}")
 
-    def eigent_make_sub_tasks(
+    def paxs_make_sub_tasks(
         self,
         task: Task,
         coordinator_context: str = "",
         on_stream_batch=None,
         on_stream_text=None,
     ):
-        """Split process_task method to eigent_make_sub_tasks
-        and eigent_start method.
+        """Split process_task method to paxs_make_sub_tasks
+        and paxs_start method.
 
         Args:
             task: The main task to decompose
@@ -124,7 +124,7 @@ Do not assume success based only on the response text. Validate the actual files
             on_stream_text: Optional callback for raw
                 streaming text chunks
         """
-        logger.debug("[DECOMPOSE] eigent_make_sub_tasks called",
+        logger.debug("[DECOMPOSE] paxs_make_sub_tasks called",
                      extra={
                          "api_task_id": self.api_task_id,
                          "task_id": task.id
@@ -165,9 +165,9 @@ Do not assume success based only on the response text. Validate the actual files
                     })
         return subtasks
 
-    async def eigent_start(self, subtasks: list[Task]):
+    async def paxs_start(self, subtasks: list[Task]):
         """start the workforce"""
-        logger.debug((f"[WF-LIFECYCLE] eigent_start called with "
+        logger.debug((f"[WF-LIFECYCLE] paxs_start called with "
                       f"{len(subtasks)} subtasks"),
                      extra={"api_task_id": self.api_task_id})
         # Clear existing pending tasks to use the user-edited task list

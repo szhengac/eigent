@@ -31,7 +31,7 @@ from app.service.task import Agents
 logger = logging.getLogger("rag_toolkit")
 
 # Default paths and constants
-DEFAULT_RAG_STORAGE_PATH = "~/.eigent/server_data/rag_storage"
+DEFAULT_RAG_STORAGE_PATH = "~/.paxs/server_data/rag_storage"
 DEFAULT_COLLECTION_NAME = "default"
 RAW_TEXT_SUBDIR = "raw_text"
 DEFAULT_STORAGE_TYPE = StorageType.QDRANT
@@ -57,6 +57,7 @@ class RAGToolkit(AbstractToolkit):
         self,
         api_task_id: str,
         agent_name: str | None = None,
+        api_key: str | None = None,
         collection_name: str | None = None,
         storage_path: str | Path | None = None,
         storage_type: StorageType | None = None,
@@ -68,6 +69,7 @@ class RAGToolkit(AbstractToolkit):
         Args:
             api_task_id (str): Task ID for eigent integration.
             agent_name (str | None): Optional agent name override.
+            api_key (str | None): API key for the embedding model.
             collection_name (str | None): Name for the vector collection.
             storage_path (str | Path | None): Path for vector storage.
             storage_type (StorageType | None): Vector storage type (default: QDRANT).
@@ -77,6 +79,7 @@ class RAGToolkit(AbstractToolkit):
         self.api_task_id = api_task_id
         if agent_name is not None:
             self.agent_name = agent_name
+        self.api_key = api_key
 
         # Use provided paths or defaults
         self._storage_path = (
@@ -113,7 +116,7 @@ class RAGToolkit(AbstractToolkit):
             if self._custom_embedding_model is not None:
                 self._embedding_model = self._custom_embedding_model
             else:
-                api_key = env("OPENAI_API_KEY")
+                api_key = self.api_key or env("OPENAI_API_KEY")
                 if not api_key:
                     raise ValueError(
                         "OPENAI_API_KEY required (or provide embedding_model)"

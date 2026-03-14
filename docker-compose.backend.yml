@@ -1,5 +1,5 @@
 services:
-  paxs-eigent-backend:
+  super-agent-backend:
     build:
       context: ./backend
       dockerfile: Dockerfile

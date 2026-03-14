@@ -40,7 +40,7 @@ def _env_allowlist() -> set[str]:
         "E2B_API_KEY",
         "E2B_DOMAIN",
     }
-    extra = set(_split_csv(os.environ.get("EIGENT_EPHEMERAL_ENV_ALLOWLIST")))
+    extra = set(_split_csv(os.environ.get("PAXS_EPHEMERAL_ENV_ALLOWLIST")))
     return default | extra
 
 
@@ -94,7 +94,7 @@ async def _ensure_worker_container(project_key: str | None, image: str, timeout_
 
     # Container names must be DNS-like; just append the raw key safely.
     safe_key = "".join(ch if ch.isalnum() or ch in "-_" else "-" for ch in project_key)
-    container_name = await _start_worker_container(image, timeout_s, explicit_name=f"paxs-eigent-worker-{safe_key}")
+    container_name = await _start_worker_container(image, timeout_s, explicit_name=f"paxs-super-agent-worker-{safe_key}")
 
     async with _PROJECT_WORKERS_LOCK:
         _PROJECT_WORKERS[project_key] = container_name
@@ -108,7 +108,7 @@ async def _start_worker_container(image: str, timeout_s: float, explicit_name: s
 
     Returns the container name to use for HTTP routing.
     """
-    container_name = explicit_name or f"paxs-eigent-worker-{uuid.uuid4().hex[:12]}"
+    container_name = explicit_name or f"paxs-super-agent-worker-{uuid.uuid4().hex[:12]}"
 
     # Pass through a controlled set of env vars into the worker.
     allow = _env_allowlist()
@@ -119,7 +119,7 @@ async def _start_worker_container(image: str, timeout_s: float, explicit_name: s
             env_flags.extend(["-e", f"{k}={v}"])
 
     # Ensure workers do not recursively gateway.
-    env_flags.extend(["-e", "EIGENT_EPHEMERAL_GATEWAY_ENABLED=false"])
+    env_flags.extend(["-e", "PAXS_EPHEMERAL_GATEWAY_ENABLED=false"])
 
     # Run worker container in detached mode; it will start /entrypoint.sh (uvicorn on port 5002).
     cmd = [
@@ -132,7 +132,7 @@ async def _start_worker_container(image: str, timeout_s: float, explicit_name: s
     ]
 
     # Optional: use a specific Docker network if configured.
-    network = os.environ.get("EIGENT_EPHEMERAL_DOCKER_NETWORK")
+    network = os.environ.get("PAXS_EPHEMERAL_DOCKER_NETWORK", "paxs-agent-net")
     if network:
         cmd.extend(["--network", network])
 
@@ -162,7 +162,7 @@ async def _start_worker_container(image: str, timeout_s: float, explicit_name: s
     # Wait for worker FastAPI app to be ready.
     base_url = f"http://{container_name}:5002"
     health_url = base_url + "/health"
-    startup_timeout = float(os.environ.get("EIGENT_EPHEMERAL_STARTUP_TIMEOUT_S", "30"))
+    startup_timeout = float(os.environ.get("PAXS_EPHEMERAL_STARTUP_TIMEOUT_S", "30"))
     start_time = asyncio.get_event_loop().time()
 
     async with httpx.AsyncClient(timeout=5.0) as client:
@@ -191,14 +191,14 @@ class DockerEphemeralBackend:
 
     @classmethod
     def from_env(cls) -> "DockerEphemeralBackend":
-        image = os.environ.get("EIGENT_EPHEMERAL_DOCKER_IMAGE", "").strip()
+        image = os.environ.get("PAXS_EPHEMERAL_DOCKER_IMAGE", "").strip()
         if not image:
             raise EphemeralBackendError(
-                "EIGENT_EPHEMERAL_DOCKER_IMAGE is required for docker backend "
+                "PAXS_EPHEMERAL_DOCKER_IMAGE is required for docker backend "
                 "(e.g. the image built from backend/Dockerfile)."
             )
         # Align with SSE timeout in chat_controller (60 minutes) by default.
-        timeout_s = float(os.environ.get("EIGENT_EPHEMERAL_TIMEOUT_S", "3600"))
+        timeout_s = float(os.environ.get("PAXS_EPHEMERAL_TIMEOUT_S", "3600"))
         return cls(image=image, timeout_s=timeout_s)
 
     async def handle_http(

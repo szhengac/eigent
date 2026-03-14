@@ -315,7 +315,7 @@ async def open_browser_login():
 
         # IMPORTANT: Use dedicated profile for tool_controller browser
         # This is the SOURCE OF TRUTH for login data
-        # On Eigent startup, this data will be copied to WebView partition (one-way sync)
+        # On Paxs Super Agent startup, this data will be copied to WebView partition (one-way sync)
         user_data_dir = os.path.join(BROWSER_PROFILES_BASE, "profile_user_login")
 
         os.makedirs(user_data_dir, exist_ok=True)

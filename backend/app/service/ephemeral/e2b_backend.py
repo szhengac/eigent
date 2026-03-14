@@ -36,7 +36,7 @@ class E2BEphemeralBackend:
     @classmethod
     def from_env(cls) -> "E2BEphemeralBackend":
         # Align with SSE timeout in chat_controller (60 minutes) by default.
-        timeout_s = float(os.environ.get("EIGENT_EPHEMERAL_TIMEOUT_S", "3600"))
+        timeout_s = float(os.environ.get("PAXS_EPHEMERAL_TIMEOUT_S", "3600"))
         return cls(timeout_s=timeout_s)
 
     async def handle_http(
@@ -92,8 +92,8 @@ class E2BEphemeralBackend:
             # (Workers must never enable the gateway again.)
             code = r"""
 import base64, json, os
-os.environ["EIGENT_EPHEMERAL_GATEWAY_ENABLED"] = "false"
-payload_b64 = os.environ.get("EIGENT_EPHEMERAL_REQUEST_B64", "")
+os.environ["PAXS_EPHEMERAL_GATEWAY_ENABLED"] = "false"
+payload_b64 = os.environ.get("PAXS_EPHEMERAL_REQUEST_B64", "")
 req = json.loads(base64.b64decode(payload_b64).decode("utf-8"))
 
 from app import api
@@ -124,17 +124,17 @@ with TestClient(api) as client:
             "headers": dict(r.headers),
             "media_type": r.headers.get("content-type"),
         }
-        print("EIGENT_META " + json.dumps(meta))
+        print("PAXS_META " + json.dumps(meta))
         for chunk in r.iter_bytes():
             if not chunk:
                 continue
-            print("EIGENT_CHUNK " + b64encode(chunk))
-        print("EIGENT_DONE")
+            print("PAXS_CHUNK " + b64encode(chunk))
+        print("PAXS_DONE")
 """
             # E2B runs code synchronously; keep this function async-compatible.
             # Also ensure the repository code exists in sandbox: assume you build an E2B template
             # with this backend package; otherwise this will fail with ImportError.
-            sandbox.set_env("EIGENT_EPHEMERAL_REQUEST_B64", req_b64)
+            sandbox.set_env("PAXS_EPHEMERAL_REQUEST_B64", req_b64)
             execution = sandbox.run_code(code)
 
             text = (execution.text or "").strip()
@@ -142,11 +142,11 @@ with TestClient(api) as client:
                 raise EphemeralBackendError(f"E2B worker produced no output. error={execution.error}")
 
             lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
-            meta_line = next((ln for ln in lines if ln.startswith("EIGENT_META ")), None)
+            meta_line = next((ln for ln in lines if ln.startswith("PAXS_META ")), None)
             if not meta_line:
                 raise EphemeralBackendError(f"E2B worker missing META line. output={text[:5000]}")
 
-            meta = json.loads(meta_line.removeprefix("EIGENT_META ").strip())
+            meta = json.loads(meta_line.removeprefix("PAXS_META ").strip())
             status_code = int(meta["status_code"])
             resp_headers = {str(k): str(v) for k, v in (meta.get("headers") or {}).items()}
             media_type = meta.get("media_type")
@@ -154,8 +154,8 @@ with TestClient(api) as client:
             # E2B stdout is buffered, so we return a buffered body (not true streaming).
             chunks: list[bytes] = []
             for ln in lines:
-                if ln.startswith("EIGENT_CHUNK "):
-                    b64 = ln.removeprefix("EIGENT_CHUNK ").strip()
+                if ln.startswith("PAXS_CHUNK "):
+                    b64 = ln.removeprefix("PAXS_CHUNK ").strip()
                     if b64:
                         chunks.append(base64.b64decode(b64.encode("utf-8")))
             body_bytes = b"".join(chunks)

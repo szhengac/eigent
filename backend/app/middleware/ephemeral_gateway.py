@@ -44,8 +44,8 @@ class EphemeralGatewayConfig:
 
     @classmethod
     def from_env(cls) -> "EphemeralGatewayConfig":
-        enabled = os.environ.get("EIGENT_EPHEMERAL_GATEWAY_ENABLED", "").lower() in {"1", "true", "yes", "on"}
-        backend = os.environ.get("EIGENT_EPHEMERAL_BACKEND", "docker").strip().lower()
+        enabled = os.environ.get("PAXS_EPHEMERAL_GATEWAY_ENABLED", "true").lower() in {"1", "true", "yes", "on"}
+        backend = os.environ.get("PAXS_EPHEMERAL_BACKEND", "docker").strip().lower()
 
         default_excludes = [
             "/health",
@@ -53,13 +53,13 @@ class EphemeralGatewayConfig:
             "/redoc",
             "/openapi.json",
         ]
-        excludes = tuple(_split_csv(os.environ.get("EIGENT_EPHEMERAL_EXCLUDE_PREFIXES")) or default_excludes)
+        excludes = tuple(_split_csv(os.environ.get("PAXS_EPHEMERAL_EXCLUDE_PREFIXES")) or default_excludes)
         return cls(enabled=enabled, backend=backend, exclude_path_prefixes=excludes)
 
 
 def _should_bypass(request: Request, config: EphemeralGatewayConfig) -> bool:
     # Prevent infinite recursion: workers must never gateway again.
-    if request.headers.get("x-eigent-ephemeral-worker", "").lower() in {"1", "true", "yes"}:
+    if request.headers.get("x-paxs-ephemeral-worker", "").lower() in {"1", "true", "yes"}:
         return True
 
     path = request.url.path
@@ -133,7 +133,7 @@ class EphemeralGatewayMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         headers = _headers_to_forward(dict(request.headers))
-        headers["x-eigent-ephemeral-worker"] = "1"
+        headers["x-paxs-ephemeral-worker"] = "1"
 
         try:
             worker_resp = await self._backend.handle_http(
@@ -207,9 +207,9 @@ def maybe_install_ephemeral_gateway(app) -> None:
     Installs the ephemeral gateway middleware if enabled via env.
 
     Env:
-      - EIGENT_EPHEMERAL_GATEWAY_ENABLED=true|false
-      - EIGENT_EPHEMERAL_BACKEND=docker|e2b
-      - EIGENT_EPHEMERAL_EXCLUDE_PREFIXES=/health,/docs,...
+      - PAXS_EPHEMERAL_GATEWAY_ENABLED=true|false
+      - PAXS_EPHEMERAL_BACKEND=docker|e2b
+      - PAXS_EPHEMERAL_EXCLUDE_PREFIXES=/health,/docs,...
     """
     config = EphemeralGatewayConfig.from_env()
     if not config.enabled:

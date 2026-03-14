@@ -38,7 +38,7 @@ class NoteTakingToolkit(BaseNoteTakingToolkit, AbstractToolkit):
         if agent_name is not None:
             self.agent_name = agent_name
         if working_directory is None:
-            base = env("EIGENT_DATA_DIR", os.path.expanduser("~/.eigent/server_data"))
+            base = env("PAXS_DATA_DIR", os.path.expanduser("~/.paxs/server_data"))
             working_directory = os.path.join(base, "notes")
         super().__init__(working_directory=working_directory, timeout=timeout)
 
